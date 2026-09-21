@@ -1,5 +1,7 @@
 package io.nekohasekai.sfa.bg
 
+import io.nekohasekai.sfa.utils.ServerSelectionStore
+import io.nekohasekai.sfa.utils.ServerSelection
 import io.nekohasekai.sfa.utils.RemoteProfileLoader
 import android.content.Context
 import android.util.Log
@@ -76,7 +78,10 @@ class UpdateProfileWork {
                     continue
                 }
                 try {
-                    val content = RemoteProfileLoader.fetch(profile.typed.remoteURL).content
+                    val content = ServerSelection.applyStored(
+                        RemoteProfileLoader.fetch(profile.typed.remoteURL).content,
+                        ServerSelectionStore.stored(applicationContext, profile.id),
+                    )
                     Libbox.checkConfig(content)
                     val file = File(profile.typed.path)
                     if (file.readText() != content) {

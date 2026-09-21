@@ -4,6 +4,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.io.ByteArrayInputStream
 import java.io.FileInputStream
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Base64
 import java.util.Properties
 
@@ -74,6 +76,12 @@ android {
         versionCode = getVersionProps("VERSION_CODE").toInt()
         versionName = getVersionProps("VERSION_NAME")
         base.archivesName.set("Aurora-${versionName}")
+        // Shown in Settings next to the version: when this build was released.
+        buildConfigField(
+            "String",
+            "RELEASE_DATE",
+            "\"${LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))}\"",
+        )
     }
 
     signingConfigs {

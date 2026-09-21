@@ -33,6 +33,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import io.nekohasekai.libbox.Libbox
+import io.nekohasekai.sfa.BuildConfig
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -82,6 +84,51 @@ fun SettingsScreen(navController: NavController) {
             .verticalScroll(rememberScrollState())
             .padding(vertical = 8.dp),
     ) {
+        // Version at a glance: what is installed and when it was released.
+        // Tapping opens the app settings, where updates are checked.
+        Card(
+            modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { navController.navigate("settings/app") },
+            colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            ),
+        ) {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        stringResource(R.string.aurora_version_line, BuildConfig.VERSION_NAME),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        stringResource(R.string.aurora_release_line, BuildConfig.RELEASE_DATE, Libbox.version()),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                },
+                trailingContent = {
+                    if (hasUpdate) {
+                        Badge(containerColor = MaterialTheme.colorScheme.primary) {
+                            Text(stringResource(R.string.aurora_update_badge))
+                        }
+                    }
+                },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            )
+        }
+
         // General Settings Group
         Card(
             modifier =

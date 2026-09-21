@@ -593,6 +593,10 @@ object ProxyLinkParser {
                             JSONArray().apply {
                                 put(JSONObject().put("action", "sniff"))
                                 put(JSONObject().put("action", "hijack-dns").put("protocol", "dns"))
+                                // Keep the local network local: Android's VPN captures
+                                // every route, so without this the PC, router and
+                                // printers were only reachable via the remote server.
+                                put(JSONObject().put("ip_is_private", true).put("outbound", DIRECT_TAG))
                                 put(
                                     JSONObject()
                                         .put("domain_suffix", JSONArray(directDomainSuffixes))
@@ -608,7 +612,8 @@ object ProxyLinkParser {
                     },
                 )
 
-                put("experimental", JSONObject().put("cache_file", JSONObject().put("enabled", true)))
+                // No cache_file: it would restore the last runtime choice on start
+                // and override the selector default that the server picker writes.
             }
 
         return config.toString(2)

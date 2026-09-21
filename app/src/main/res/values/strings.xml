@@ -491,4 +491,11 @@
     <string name="profile_link_hint">Paste a link and press Create — nothing else to fill in</string>
     <string name="paste_from_clipboard">Paste from clipboard</string>
     <string name="error_lan_unreachable">Could not reach the computer at %s. Connect the phone to the same Wi-Fi as the computer and scan a fresh QR code.</string>
+    <string name="server_picker_title">Choose server</string>
+    <string name="server_current">Server: %s</string>
+    <string name="server_auto">Auto — fastest</string>
+    <string name="server_selected_toast">Server: %s</string>
+    <string name="aurora_version_line">Aurora %s</string>
+    <string name="aurora_release_line">Released %1$s · sing-box core %2$s</string>
+    <string name="aurora_update_badge">Update</string>
 </resources>

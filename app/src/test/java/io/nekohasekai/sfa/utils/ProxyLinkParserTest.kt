@@ -168,6 +168,25 @@ class ProxyLinkParserTest {
         assertEquals("Only", parsed.name)
     }
 
+    /**
+     * With the VPN on, the phone must still reach its own network: the PC that
+     * shares profiles, the router, printers. Android's VPN captures everything,
+     * so without this rule 192.168.x.x went to the remote server and failed
+     * ("could not reach the computer … EOF" while updating a profile).
+     */
+    @Test
+    fun localNetworkBypassesTheTunnel() {
+        val parsed = ProxyLinkParser.parse("vless://$uuid@a.example.com:443?security=tls#A")!!
+        val rules = JSONObject(parsed.config).getJSONObject("route").getJSONArray("rules")
+        val list = (0 until rules.length()).map { rules.getJSONObject(it) }
+        val privateIndex = list.indexOfFirst { it.optBoolean("ip_is_private") }
+        assertTrue("expected an ip_is_private rule", privateIndex >= 0)
+        assertEquals(ProxyLinkParser.DIRECT_TAG, list[privateIndex].getString("outbound"))
+        // It must come right after DNS hijacking, before anything that proxies.
+        val hijackIndex = list.indexOfFirst { it.optString("action") == "hijack-dns" }
+        assertEquals(hijackIndex + 1, privateIndex)
+    }
+
     @Test
     fun localDnsHasNoDirectDetour() {
         // sing-box aborts at startup on a DNS server detoured to a bare `direct`.

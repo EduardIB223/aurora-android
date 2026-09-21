@@ -1,5 +1,8 @@
 package io.nekohasekai.sfa.compose.screen.dashboard
 
+import io.nekohasekai.sfa.utils.ServerSelectionStore
+import io.nekohasekai.sfa.utils.ServerSelection
+import io.nekohasekai.sfa.Application
 import io.nekohasekai.sfa.utils.RemoteProfileLoader
 import androidx.lifecycle.viewModelScope
 import io.nekohasekai.libbox.Libbox
@@ -347,7 +350,10 @@ class DashboardViewModel :
 
             try {
                 // Fetch remote config
-                val content = RemoteProfileLoader.fetch(profile.typed.remoteURL).content
+                val content = ServerSelection.applyStored(
+                    RemoteProfileLoader.fetch(profile.typed.remoteURL).content,
+                    ServerSelectionStore.stored(Application.application, profile.id),
+                )
                 Libbox.checkConfig(content)
 
                 // Check if content changed
@@ -446,9 +452,18 @@ class DashboardViewModel :
         }
     }
 
+    /** The server picked on the profile card wins over whatever the core restored. */
+    private fun applyStoredServerChoice() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val profile = ProfileManager.get(Settings.selectedProfile) ?: return@launch
+            ServerSelectionStore.applyAfterStart(Application.application, profile)
+        }
+    }
+
     private fun handleServiceStatusChange(status: Status) {
         when (status) {
             Status.Started -> {
+                applyStoredServerChoice()
                 checkDeprecatedNotes()
                 if (AppLifecycleObserver.isForeground.value) {
                     commandClient.connect()

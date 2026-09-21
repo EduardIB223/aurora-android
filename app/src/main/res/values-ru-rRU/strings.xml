@@ -477,4 +477,11 @@
     <string name="profile_link_hint">Вставь ссылку и нажми «Создать» — больше ничего заполнять не нужно</string>
     <string name="paste_from_clipboard">Вставить из буфера</string>
     <string name="error_lan_unreachable">Не удалось связаться с компьютером (%s). Подключи телефон к той же Wi-Fi сети, что и компьютер, и отсканируй новый QR-код.</string>
+    <string name="server_picker_title">Выбор сервера</string>
+    <string name="server_current">Сервер: %s</string>
+    <string name="server_auto">Авто — самый быстрый</string>
+    <string name="server_selected_toast">Выбран сервер: %s</string>
+    <string name="aurora_version_line">Aurora %s</string>
+    <string name="aurora_release_line">Релиз от %1$s · ядро sing-box %2$s</string>
+    <string name="aurora_update_badge">Обновление</string>
 </resources>

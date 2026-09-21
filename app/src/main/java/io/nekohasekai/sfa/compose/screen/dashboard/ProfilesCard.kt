@@ -51,6 +51,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material.icons.filled.UnfoldMore
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,7 +73,9 @@ import androidx.compose.ui.unit.dp
 import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.libbox.ProfileContent
 import io.nekohasekai.sfa.R
-import io.nekohasekai.sfa.compose.component.PingAllDialog
+import io.nekohasekai.sfa.compose.component.ServerPickerSheet
+import io.nekohasekai.sfa.utils.ServerSelection
+import io.nekohasekai.sfa.utils.ServerSelectionStore
 import io.nekohasekai.sfa.compose.component.qr.QRCodeDialog
 import io.nekohasekai.sfa.compose.component.qr.QRSDialog
 import io.nekohasekai.sfa.compose.component.qr.QRScanSheet
@@ -115,7 +122,9 @@ fun ProfilesCard(
     val coroutineScope = rememberCoroutineScope()
 
     val importHandler = remember { ProfileImportHandler(context) }
-    var showPingAll by remember { mutableStateOf(false) }
+    // Server picker: null = closed, otherwise whether to ping as it opens.
+    var serverPickerPing by remember { mutableStateOf<Boolean?>(null) }
+    var selectionVersion by remember { mutableIntStateOf(0) }
 
     // One path for every textual link: scanned QR codes and the clipboard alike.
     // Subscriptions open the new-profile form (to review auto-update), single
@@ -406,11 +415,45 @@ fun ProfilesCard(
                     },
                 )
 
-                // One tap checks every server of the profile, like on the PC.
+                // Which server of the profile is used, and one tap to check them all.
                 if (selectedProfile != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    val currentServer by produceState<String?>(null, selectedProfile.id, selectionVersion) {
+                        value =
+                            withContext(Dispatchers.IO) {
+                                val servers =
+                                    runCatching {
+                                        ServerSelection.read(java.io.File(selectedProfile.typed.path).readText())
+                                    }.getOrNull() ?: return@withContext null
+                                val tag =
+                                    ServerSelection.current(
+                                        servers,
+                                        ServerSelectionStore.stored(context, selectedProfile.id),
+                                    )
+                                if (servers.entries.firstOrNull { it.tag == tag }?.isAuto == true) {
+                                    context.getString(R.string.server_auto)
+                                } else {
+                                    tag
+                                }
+                            }
+                    }
+                    currentServer?.let { name ->
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = { serverPickerPing = false },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                stringResource(R.string.server_current, name),
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Icon(Icons.Default.UnfoldMore, contentDescription = null, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                     FilledTonalButton(
-                        onClick = { showPingAll = true },
+                        onClick = { serverPickerPing = true },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Icon(
@@ -426,11 +469,14 @@ fun ProfilesCard(
         }
     }
 
-    if (showPingAll && selectedProfile != null) {
-        PingAllDialog(
-            configPath = selectedProfile.typed.path,
+    val pickerPing = serverPickerPing
+    if (pickerPing != null && selectedProfile != null) {
+        ServerPickerSheet(
+            profile = selectedProfile,
             vpnRunning = vpnRunning,
-            onDismiss = { showPingAll = false },
+            pingOnOpen = pickerPing,
+            onSelected = { selectionVersion++ },
+            onDismiss = { serverPickerPing = null },
         )
     }
 
