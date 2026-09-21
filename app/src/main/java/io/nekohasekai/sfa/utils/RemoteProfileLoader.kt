@@ -1,6 +1,8 @@
 package io.nekohasekai.sfa.utils
 
 import io.nekohasekai.libbox.Libbox
+import io.nekohasekai.sfa.Application
+import io.nekohasekai.sfa.R
 
 /**
  * Downloads a remote profile and makes sure the result can actually run.
@@ -25,7 +27,17 @@ object RemoteProfileLoader {
     )
 
     fun fetch(url: String): Result {
-        val native = HTTPClient().use { it.getString(url) }
+        val native =
+            try {
+                HTTPClient().use { it.getString(url) }
+            } catch (e: Exception) {
+                val raw = e.message ?: e.toString()
+                val message =
+                    unreachableLanHost(url, raw)?.let { host ->
+                        Application.application.getString(R.string.error_lan_unreachable, host) + "\n\n" + raw
+                    } ?: raw
+                throw IllegalStateException(message, e)
+            }
         val nativeError = runCatching { Libbox.checkConfig(native) }.exceptionOrNull()
         if (nativeError == null) {
             return Result(native, convertedFromLinks = false, serverCount = 0)
@@ -45,5 +57,32 @@ object RemoteProfileLoader {
 
         // Nothing usable: surface the original reason, which is the most specific.
         throw IllegalStateException(nativeError.message ?: "Unsupported profile format", nativeError)
+    }
+
+    /**
+     * The host, when [message] says a private/LAN address could not be
+     * reached — almost always a QR from a PC on another network, or pointing
+     * at a VPN address the phone cannot reach. Null for anything else.
+     */
+    internal fun unreachableLanHost(url: String, message: String): String? {
+        val host = hostOf(url)
+        val lanHost = isLanUrl(url)
+        val stalled =
+            listOf("timeout", "deadline", "eof", "refused", "unreachable", "no route")
+                .any { message.contains(it, ignoreCase = true) }
+        return host.takeIf { lanHost && stalled }
+    }
+
+    private fun hostOf(url: String): String = url.substringAfter("://").substringBefore('/').substringBefore(':')
+
+    /**
+     * A URL on the local network — e.g. a profile served by Aurora on a PC.
+     * Such links are temporary, so auto-update must default to off for them.
+     */
+    fun isLanUrl(url: String): Boolean {
+        val host = hostOf(url)
+        return host.startsWith("192.168.") || host.startsWith("10.") ||
+            Regex("""^172\.(1[6-9]|2\d|3[01])\.""").containsMatchIn(host) ||
+            host.startsWith("198.18.") || host.startsWith("198.19.")
     }
 }

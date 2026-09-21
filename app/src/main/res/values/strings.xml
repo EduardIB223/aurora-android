@@ -148,7 +148,7 @@
     <string name="profile_type_local">Local</string>
     <string name="profile_type_remote">Remote</string>
     <string name="profile_type_remote_updated">Remote • %s</string>
-    <string name="profile_source_create_new">Create New</string>
+    <string name="profile_source_create_new">Empty (JSON)</string>
     <string name="profile_source_import">Import</string>
     <string name="profile_add_import_file">Import from file</string>
     <string name="profile_add_scan_qr_code">Scan QR code</string>
@@ -481,9 +481,14 @@
     <string name="ping_all">Ping all</string>
     <string name="ping_all_running">Pinging…</string>
     <string name="ping_all_summary">%1$d of %2$d servers respond</string>
-    <string name="ping_all_no_servers">This profile has no servers to ping</string>
+    <string name="ping_all_no_servers">This profile has no servers — it was probably created empty. Delete it and create a new one from a link.</string>
     <string name="ping_all_failed">Ping failed: %s</string>
     <string name="ping_all_again">Again</string>
     <string name="ping_all_no_response">no response</string>
     <string name="ping_all_through_vpn">VPN is on, so servers were measured through the active tunnel.</string>
+    <string name="profile_link_title">Link</string>
+    <string name="profile_link_label">vless://, vmess://, trojan://, ss://, hy2:// or a subscription</string>
+    <string name="profile_link_hint">Paste a link and press Create — nothing else to fill in</string>
+    <string name="paste_from_clipboard">Paste from clipboard</string>
+    <string name="error_lan_unreachable">Could not reach the computer at %s. Connect the phone to the same Wi-Fi as the computer and scan a fresh QR code.</string>
 </resources>

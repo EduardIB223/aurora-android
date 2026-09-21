@@ -104,6 +104,16 @@ fun PingAllDialog(
                             stringResource(R.string.ping_all_summary, working, current.size),
                             fontWeight = FontWeight.SemiBold,
                         )
+                        // When nothing answers, the reason matters more than the list.
+                        if (working == 0) {
+                            current.firstOrNull { it.error.isNotBlank() }?.let { failed ->
+                                Text(
+                                    failed.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        }
                         if (vpnRunning) {
                             Text(
                                 stringResource(R.string.ping_all_through_vpn),

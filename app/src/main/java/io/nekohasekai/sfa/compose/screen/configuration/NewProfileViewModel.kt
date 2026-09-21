@@ -26,6 +26,10 @@ import java.util.Date
 
 data class NewProfileUiState(
     val name: String = "",
+    // A pasted share link or subscription URL. When set it decides everything
+    // and the type/source choices below are not used.
+    val linkText: String = "",
+    val linkError: String? = null,
     val profileType: ProfileType = ProfileType.Local,
     val profileSource: ProfileSource = ProfileSource.CreateNew,
     // Remote profile fields
@@ -70,6 +74,9 @@ class NewProfileViewModel(application: Application) : AndroidViewModel(applicati
                     name = name,
                     profileType = ProfileType.Remote,
                     remoteUrl = url,
+                    // A profile served by a PC on the LAN is gone after a few
+                    // minutes; auto-updating it would only produce errors.
+                    autoUpdate = !RemoteProfileLoader.isLanUrl(url),
                 )
             }
         }
@@ -124,6 +131,31 @@ class NewProfileViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
+    fun updateLinkText(text: String) {
+        val suggestedName = suggestNameForLink(text)
+        _uiState.update {
+            it.copy(
+                linkText = text,
+                linkError = null,
+                name = if (it.name.isBlank() && suggestedName != null) suggestedName else it.name,
+                nameError = if (suggestedName != null) null else it.nameError,
+            )
+        }
+    }
+
+    /** A name for the profile taken from the link itself, if it carries one. */
+    private fun suggestNameForLink(text: String): String? {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return null
+        if (trimmed.startsWith("sing-box://import-remote-profile", true)) {
+            return runCatching { Libbox.parseRemoteProfileImportLink(trimmed).name }.getOrNull()
+                ?.takeIf { it.isNotBlank() }
+        }
+        if (ProxyLinkParser.isProxyLink(trimmed)) return ProxyLinkParser.parse(trimmed)?.name
+        return ProxyLinkParser.subscriptionUrl(trimmed)
+            ?.substringAfter("://")?.substringBefore('/')?.takeIf { it.isNotBlank() }
+    }
+
     fun updateAutoUpdate(enabled: Boolean) {
         _uiState.update { it.copy(autoUpdate = enabled) }
     }
@@ -168,6 +200,25 @@ class NewProfileViewModel(application: Application) : AndroidViewModel(applicati
 
         var hasError = false
 
+        // A pasted link carries everything needed; the name falls back to the
+        // one from the link.
+        if (state.linkText.isNotBlank()) {
+            val text = state.linkText.trim()
+            val recognised =
+                text.startsWith("sing-box://import-remote-profile", true) ||
+                    ProxyLinkParser.isProxyLink(text) ||
+                    ProxyLinkParser.subscriptionUrl(text) != null
+            if (!recognised) {
+                _uiState.update { it.copy(linkError = context.getString(R.string.error_unsupported_share_link)) }
+                return false
+            }
+            if (state.name.isBlank()) {
+                _uiState.update { it.copy(name = suggestNameForLink(text) ?: "Aurora") }
+            }
+            createProfile()
+            return true
+        }
+
         // Validate name
         if (state.name.isBlank()) {
             _uiState.update { it.copy(nameError = context.getString(R.string.profile_input_required)) }
@@ -207,9 +258,11 @@ class NewProfileViewModel(application: Application) : AndroidViewModel(applicati
             try {
                 val profile =
                     withContext(Dispatchers.IO) {
-                        when (state.profileType) {
-                            ProfileType.Local -> createLocalProfile(state)
-                            ProfileType.Remote -> createRemoteProfile(state)
+                        val current = _uiState.value
+                        when {
+                            current.linkText.isNotBlank() -> createProfileFromLink(current)
+                            current.profileType == ProfileType.Local -> createLocalProfile(current)
+                            else -> createRemoteProfile(current)
                         }
                     }
 
@@ -229,6 +282,33 @@ class NewProfileViewModel(application: Application) : AndroidViewModel(applicati
                 }
             }
         }
+    }
+
+    /**
+     * Creates a profile from a pasted link: a single share link (or several)
+     * becomes a local profile with every server; a subscription becomes a
+     * remote profile that keeps updating.
+     */
+    private suspend fun createProfileFromLink(state: NewProfileUiState): Profile {
+        val context = getApplication<Application>()
+        val text = state.linkText.trim()
+
+        if (text.startsWith("sing-box://import-remote-profile", true)) {
+            val info = Libbox.parseRemoteProfileImportLink(text)
+            return createRemoteProfile(
+                state.copy(remoteUrl = info.url, autoUpdate = !RemoteProfileLoader.isLanUrl(info.url)),
+            )
+        }
+        if (ProxyLinkParser.isProxyLink(text)) {
+            val parsed =
+                ProxyLinkParser.parse(text)
+                    ?: throw IllegalArgumentException(context.getString(R.string.error_unsupported_share_link))
+            return createProfileFromConfig(state.name.ifBlank { parsed.name }, parsed.config)
+        }
+        val url =
+            ProxyLinkParser.subscriptionUrl(text)
+                ?: throw IllegalArgumentException(context.getString(R.string.error_unsupported_share_link))
+        return createRemoteProfile(state.copy(remoteUrl = url))
     }
 
     private suspend fun createLocalProfile(state: NewProfileUiState): Profile {

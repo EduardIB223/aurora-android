@@ -279,7 +279,8 @@ class ProfileImportHandler(private val context: Context) {
             TypedProfile().apply {
                 type = TypedProfile.Type.Remote
                 remoteURL = url
-                autoUpdate = true
+                // Profiles served by a PC on the LAN are temporary.
+                autoUpdate = !RemoteProfileLoader.isLanUrl(url)
                 autoUpdateInterval = 60
                 lastUpdated = Date()
             }

@@ -1,8 +1,8 @@
 From a53a7f673966018e105325c76d99a9225a08d2db Mon Sep 17 00:00:00 2001
 From: orangpt <orangpthub@gmail.com>
 Date: Mon, 21 Sep 2026 19:44:17 +0300
-Subject: [PATCH] =?UTF-8?q?libbox:=20URLTestConfig=20=E2=80=94=20probe=20e?=
- =?UTF-8?q?very=20server=20of=20a=20profile=20without=20the=20VPN?=
+Subject: [PATCH 1/2] =?UTF-8?q?libbox:=20URLTestConfig=20=E2=80=94=20probe?=
+ =?UTF-8?q?=20every=20server=20of=20a=20profile=20without=20the=20VPN?=
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
@@ -229,6 +229,90 @@ index 0000000..98ad5a1
 +		t.Fatal("expected an error for an invalid config")
 +	}
 +}
+-- 
+2.52.0.windows.1
+
+
+From 3a60225aaf5b42f8586fef490c768734234fc970 Mon Sep 17 00:00:00 2001
+From: orangpt <orangpthub@gmail.com>
+Date: Mon, 21 Sep 2026 20:14:38 +0300
+Subject: [PATCH 2/2] libbox: request timeout for HTTPClient; URLTestConfig
+ ignores routing rules
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+HTTPClient had no overall deadline, so a request to an unreachable host hung as
+long as the OS kept retrying the TCP handshake — minutes on Android, which the
+app showed as an endless spinner. SetTimeout bounds the whole request.
+
+URLTestConfig now drops route/DNS rules and rule-sets before starting: they
+play no part in probing a given outbound, and panel configs often reference
+remote rule-sets whose download would stall or fail the start.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+---
+ experimental/libbox/http.go           | 9 +++++++++
+ experimental/libbox/urltest_config.go | 9 ++++++++-
+ 2 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/experimental/libbox/http.go b/experimental/libbox/http.go
+index 69a23d2..5721cd5 100644
+--- a/experimental/libbox/http.go
++++ b/experimental/libbox/http.go
+@@ -17,6 +17,7 @@ import (
+ 	"os"
+ 	"strconv"
+ 	"sync"
++	"time"
+ 
+ 	C "github.com/sagernet/sing-box/constant"
+ 	"github.com/sagernet/sing/common"
+@@ -34,6 +35,10 @@ type HTTPClient interface {
+ 	PinnedSHA256(sumHex string)
+ 	TrySocks5(port int32)
+ 	KeepAlive()
++	// SetTimeout bounds a whole request — connect, TLS, headers and body.
++	// Without it a request to an unreachable host hangs as long as the OS
++	// keeps retrying the TCP handshake, which on Android is minutes.
++	SetTimeout(milliseconds int32)
+ 	NewRequest() HTTPRequest
+ 	Close()
+ }
+@@ -81,6 +86,10 @@ func NewHTTPClient() HTTPClient {
+ 	return client
+ }
+ 
++func (c *httpClient) SetTimeout(milliseconds int32) {
++	c.client.Timeout = time.Duration(milliseconds) * time.Millisecond
++}
++
+ func (c *httpClient) ModernTLS() {
+ 	c.setTLSVersion(tls.VersionTLS12, 0, func(suite *tls.CipherSuite) bool { return true })
+ }
+diff --git a/experimental/libbox/urltest_config.go b/experimental/libbox/urltest_config.go
+index 5a36ca2..f9d2167 100644
+--- a/experimental/libbox/urltest_config.go
++++ b/experimental/libbox/urltest_config.go
+@@ -68,10 +68,17 @@ func URLTestConfig(configContent string, testURL string, timeoutMillis int32) (U
+ 		return nil, err
+ 	}
+ 
+-	// No TUN or listeners: this instance only dials out.
++	// No TUN or listeners: this instance only dials out. Routing and DNS rules
++	// play no part in probing a specific outbound, and panel configs often
++	// reference remote rule-sets whose download would stall or fail the start.
+ 	options.Inbounds = nil
+ 	if options.Route != nil {
+ 		options.Route.AutoDetectInterface = false
++		options.Route.Rules = nil
++		options.Route.RuleSet = nil
++	}
++	if options.DNS != nil {
++		options.DNS.Rules = nil
+ 	}
+ 	// The running VPN may hold the cache file's lock; the check needs neither
+ 	// that nor the Clash API.
 -- 
 2.52.0.windows.1
 

@@ -1,5 +1,9 @@
 package io.nekohasekai.sfa.compose.screen.configuration
 
+import androidx.compose.material.icons.filled.ContentPaste
+import android.widget.Toast
+import android.content.Context
+import android.content.ClipboardManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -171,6 +175,73 @@ fun NewProfileScreen(
                 .padding(bottom = bottomBarPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // Link — the quickest way, like "Import" on the desktop: paste a
+            // share link or subscription and press Create.
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.profile_link_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    OutlinedTextField(
+                        value = uiState.linkText,
+                        onValueChange = viewModel::updateLinkText,
+                        label = { Text(stringResource(R.string.profile_link_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        maxLines = 5,
+                        isError = uiState.linkError != null,
+                        supportingText = {
+                            Text(
+                                text = uiState.linkError ?: stringResource(R.string.profile_link_hint),
+                                color =
+                                if (uiState.linkError != null) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                        },
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val text =
+                                clipboard.primaryClip
+                                    ?.takeIf { it.itemCount > 0 }
+                                    ?.getItemAt(0)
+                                    ?.coerceToText(context)
+                                    ?.toString()
+                                    ?.trim()
+                            if (text.isNullOrEmpty()) {
+                                Toast.makeText(context, R.string.clipboard_empty, Toast.LENGTH_SHORT).show()
+                            } else {
+                                viewModel.updateLinkText(text)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentPaste,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.paste_from_clipboard))
+                    }
+                }
+            }
+
             // Profile Name
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -207,89 +278,96 @@ fun NewProfileScreen(
                 }
             }
 
-            // Profile Type Selection
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors =
-                CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                ),
+            // Type and source only matter without a pasted link.
+            AnimatedVisibility(
+                visible = uiState.linkText.isBlank(),
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                // Profile Type Selection
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors =
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    ),
                 ) {
-                    Text(
-                        text = stringResource(R.string.profile_type),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy((-1).dp), // Overlap borders
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        OutlinedButton(
-                            onClick = { viewModel.updateProfileType(ProfileType.Local) },
-                            modifier = Modifier.weight(1f),
-                            shape =
-                            RoundedCornerShape(
-                                topStart = 12.dp,
-                                bottomStart = 12.dp,
-                                topEnd = 0.dp,
-                                bottomEnd = 0.dp,
-                            ),
-                            colors =
-                            if (uiState.profileType == ProfileType.Local) {
-                                ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                            } else {
-                                ButtonDefaults.outlinedButtonColors()
-                            },
-                            border =
-                            BorderStroke(
-                                1.dp,
+                        Text(
+                            text = stringResource(R.string.profile_type),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy((-1).dp), // Overlap borders
+                        ) {
+                            OutlinedButton(
+                                onClick = { viewModel.updateProfileType(ProfileType.Local) },
+                                modifier = Modifier.weight(1f),
+                                shape =
+                                RoundedCornerShape(
+                                    topStart = 12.dp,
+                                    bottomStart = 12.dp,
+                                    topEnd = 0.dp,
+                                    bottomEnd = 0.dp,
+                                ),
+                                colors =
                                 if (uiState.profileType == ProfileType.Local) {
-                                    MaterialTheme.colorScheme.primary
+                                    ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
                                 } else {
-                                    MaterialTheme.colorScheme.outline
+                                    ButtonDefaults.outlinedButtonColors()
                                 },
-                            ),
-                        ) {
-                            Text(stringResource(R.string.profile_type_local))
-                        }
-                        OutlinedButton(
-                            onClick = { viewModel.updateProfileType(ProfileType.Remote) },
-                            modifier = Modifier.weight(1f),
-                            shape =
-                            RoundedCornerShape(
-                                topStart = 0.dp,
-                                bottomStart = 0.dp,
-                                topEnd = 12.dp,
-                                bottomEnd = 12.dp,
-                            ),
-                            colors =
-                            if (uiState.profileType == ProfileType.Remote) {
-                                ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                            } else {
-                                ButtonDefaults.outlinedButtonColors()
-                            },
-                            border =
-                            BorderStroke(
-                                1.dp,
+                                border =
+                                BorderStroke(
+                                    1.dp,
+                                    if (uiState.profileType == ProfileType.Local) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.outline
+                                    },
+                                ),
+                            ) {
+                                Text(stringResource(R.string.profile_type_local))
+                            }
+                            OutlinedButton(
+                                onClick = { viewModel.updateProfileType(ProfileType.Remote) },
+                                modifier = Modifier.weight(1f),
+                                shape =
+                                RoundedCornerShape(
+                                    topStart = 0.dp,
+                                    bottomStart = 0.dp,
+                                    topEnd = 12.dp,
+                                    bottomEnd = 12.dp,
+                                ),
+                                colors =
                                 if (uiState.profileType == ProfileType.Remote) {
-                                    MaterialTheme.colorScheme.primary
+                                    ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
                                 } else {
-                                    MaterialTheme.colorScheme.outline
+                                    ButtonDefaults.outlinedButtonColors()
                                 },
-                            ),
-                        ) {
-                            Text(stringResource(R.string.profile_type_remote))
+                                border =
+                                BorderStroke(
+                                    1.dp,
+                                    if (uiState.profileType == ProfileType.Remote) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.outline
+                                    },
+                                ),
+                            ) {
+                                Text(stringResource(R.string.profile_type_remote))
+                            }
                         }
                     }
                 }
@@ -297,7 +375,7 @@ fun NewProfileScreen(
 
             // Local Profile Options
             AnimatedVisibility(
-                visible = uiState.profileType == ProfileType.Local,
+                visible = uiState.linkText.isBlank() && uiState.profileType == ProfileType.Local,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically(),
             ) {
@@ -466,7 +544,7 @@ fun NewProfileScreen(
 
             // Remote Profile Options
             AnimatedVisibility(
-                visible = uiState.profileType == ProfileType.Remote,
+                visible = uiState.linkText.isBlank() && uiState.profileType == ProfileType.Remote,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically(),
             ) {

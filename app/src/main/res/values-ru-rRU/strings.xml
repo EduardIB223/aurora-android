@@ -148,7 +148,7 @@
     <string name="profile_type_local">Локальный</string>
     <string name="profile_type_remote">Удалённый</string>
     <string name="profile_type_remote_updated">Удалённый • %s</string>
-    <string name="profile_source_create_new">Создать новый</string>
+    <string name="profile_source_create_new">Пустой (JSON)</string>
     <string name="profile_source_import">Импорт</string>
     <string name="profile_add_import_file">Импорт из файла</string>
     <string name="profile_add_scan_qr_code">Сканировать QR-код</string>
@@ -467,9 +467,14 @@
     <string name="ping_all">Пинг всех</string>
     <string name="ping_all_running">Проверка…</string>
     <string name="ping_all_summary">Отвечают %1$d из %2$d</string>
-    <string name="ping_all_no_servers">В этом профиле нет серверов для проверки</string>
+    <string name="ping_all_no_servers">В этом профиле нет серверов — похоже, он создан пустым. Удали его и создай заново по ссылке.</string>
     <string name="ping_all_failed">Проверка не удалась: %s</string>
     <string name="ping_all_again">Ещё раз</string>
     <string name="ping_all_no_response">не отвечает</string>
     <string name="ping_all_through_vpn">VPN включён, поэтому серверы измерены через активный туннель.</string>
+    <string name="profile_link_title">Ссылка</string>
+    <string name="profile_link_label">vless://, vmess://, trojan://, ss://, hy2:// или подписка</string>
+    <string name="profile_link_hint">Вставь ссылку и нажми «Создать» — больше ничего заполнять не нужно</string>
+    <string name="paste_from_clipboard">Вставить из буфера</string>
+    <string name="error_lan_unreachable">Не удалось связаться с компьютером (%s). Подключи телефон к той же Wi-Fi сети, что и компьютер, и отсканируй новый QR-код.</string>
 </resources>

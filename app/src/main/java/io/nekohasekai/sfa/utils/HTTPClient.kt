@@ -7,6 +7,8 @@ import java.util.Locale
 
 class HTTPClient : Closeable {
     companion object {
+        const val TIMEOUT_MILLIS = 20_000
+
         val userAgent by lazy {
             var userAgent = "SFA (sing-box "
             userAgent += Libbox.version()
@@ -21,6 +23,10 @@ class HTTPClient : Closeable {
 
     init {
         client.modernTLS()
+        // Without a deadline a request to an unreachable address (e.g. a QR
+        // pointing at the wrong network) hangs for minutes on Android and the
+        // UI just spins.
+        client.setTimeout(TIMEOUT_MILLIS)
     }
 
     fun getString(url: String): String = getString(url, userAgent)

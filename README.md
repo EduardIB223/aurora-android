@@ -19,12 +19,12 @@ What Aurora adds on top of SFA:
 ## Building
 
 The core is sing-box built as `libbox.aar`, with one addition
-(`patches/sing-box-urltest.patch`, used by *Ping all*):
+(`patches/sing-box-aurora.patch`, used by *Ping all*):
 
 ```sh
 git clone https://github.com/SagerNet/sing-box && cd sing-box
 git checkout v1.13.21           # the core version this release was built with
-git am /path/to/aurora-android/patches/sing-box-urltest.patch
+git am /path/to/aurora-android/patches/sing-box-aurora.patch
 go run ./cmd/internal/build_libbox -target android   # needs ANDROID_NDK_HOME
 cp libbox.aar libbox-legacy.aar /path/to/aurora-android/app/libs/
 ```
