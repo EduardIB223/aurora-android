@@ -58,6 +58,7 @@ fun SFANavHost(
     showStartFab: Boolean = false,
     showStatusBar: Boolean = false,
     newProfileArgs: NewProfileArgs = NewProfileArgs(),
+    onStartService: () -> Unit = {},
     onClearNewProfileArgs: () -> Unit = {},
     onOpenNewProfile: (NewProfileArgs) -> Unit = {},
     dashboardViewModel: DashboardViewModel? = null,
@@ -78,6 +79,7 @@ fun SFANavHost(
                     showStartFab = showStartFab,
                     showStatusBar = showStatusBar,
                     onOpenNewProfile = onOpenNewProfile,
+                    onStartService = onStartService,
                     viewModel = dashboardViewModel,
                 )
             } else {
@@ -86,6 +88,7 @@ fun SFANavHost(
                     showStartFab = showStartFab,
                     showStatusBar = showStatusBar,
                     onOpenNewProfile = onOpenNewProfile,
+                    onStartService = onStartService,
                 )
             }
         }

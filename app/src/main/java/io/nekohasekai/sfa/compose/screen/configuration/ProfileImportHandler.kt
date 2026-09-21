@@ -9,6 +9,7 @@ import io.nekohasekai.sfa.R
 import io.nekohasekai.sfa.database.Profile
 import io.nekohasekai.sfa.database.ProfileManager
 import io.nekohasekai.sfa.database.TypedProfile
+import io.nekohasekai.sfa.utils.ProxyLinkParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -127,6 +128,16 @@ class ProfileImportHandler(private val context: Context) {
                 }
             }
 
+            // Share link from a panel or QR code (vless://, vmess://, trojan://, ss://)
+            if (ProxyLinkParser.isProxyLink(data)) {
+                val parsed =
+                    ProxyLinkParser.parse(data)
+                        ?: return@withContext QRCodeParseResult.Error(
+                            context.getString(R.string.error_unsupported_share_link),
+                        )
+                return@withContext QRCodeParseResult.LocalProfile(name = parsed.name)
+            }
+
             // Check if it's a direct URL
             if (data.startsWith("http://") || data.startsWith("https://")) {
                 val profileName = extractProfileNameFromUrl(data)
@@ -165,6 +176,16 @@ class ProfileImportHandler(private val context: Context) {
                         context.getString(R.string.error_decode_profile, e.message),
                     )
                 }
+            }
+
+            // Share link from a panel or QR code (vless://, vmess://, trojan://, ss://)
+            if (ProxyLinkParser.isProxyLink(data)) {
+                val parsed =
+                    ProxyLinkParser.parse(data)
+                        ?: return@withContext ImportResult.Error(
+                            context.getString(R.string.error_unsupported_share_link),
+                        )
+                return@withContext importJsonConfiguration(parsed.config, parsed.name)
             }
 
             // Check if it's a URL or direct profile content

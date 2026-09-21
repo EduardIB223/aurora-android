@@ -11,6 +11,7 @@ import io.nekohasekai.sfa.database.Profile
 import io.nekohasekai.sfa.database.ProfileManager
 import io.nekohasekai.sfa.database.TypedProfile
 import io.nekohasekai.sfa.utils.HTTPClient
+import io.nekohasekai.sfa.utils.ProxyLinkParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -107,10 +108,17 @@ class NewProfileViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun updateRemoteUrl(url: String) {
+        // A pasted share link carries its own label after "#" — use it so the
+        // name field doesn't have to be filled in by hand.
+        val suggestedName =
+            if (ProxyLinkParser.isProxyLink(url)) ProxyLinkParser.parse(url)?.name else null
+
         _uiState.update {
             it.copy(
                 remoteUrl = url,
                 remoteUrlError = if (url.isNotBlank()) null else it.remoteUrlError,
+                name = if (it.name.isBlank() && suggestedName != null) suggestedName else it.name,
+                nameError = if (suggestedName != null) null else it.nameError,
             )
         }
     }
@@ -280,6 +288,18 @@ class NewProfileViewModel(application: Application) : AndroidViewModel(applicati
 
     private suspend fun createRemoteProfile(state: NewProfileUiState): Profile {
         val context = getApplication<Application>()
+
+        // A share link pasted into the URL field can't be fetched over HTTP —
+        // expand it into a full configuration and store it as a local profile.
+        if (ProxyLinkParser.isProxyLink(state.remoteUrl)) {
+            val parsed =
+                ProxyLinkParser.parse(state.remoteUrl)
+                    ?: throw IllegalArgumentException(
+                        context.getString(R.string.error_unsupported_share_link),
+                    )
+            return createProfileFromConfig(state.name.ifBlank { parsed.name }, parsed.config)
+        }
+
         val typedProfile =
             TypedProfile().apply {
                 type = TypedProfile.Type.Remote
@@ -314,6 +334,29 @@ class NewProfileViewModel(application: Application) : AndroidViewModel(applicati
             UpdateProfileWork.reconfigureUpdater()
         }
 
+        return profile
+    }
+
+    private suspend fun createProfileFromConfig(
+        name: String,
+        config: String,
+    ): Profile {
+        val context = getApplication<Application>()
+        Libbox.checkConfig(config)
+
+        val typedProfile = TypedProfile().apply { type = TypedProfile.Type.Local }
+        val profile =
+            Profile(name = name, typed = typedProfile).apply {
+                userOrder = ProfileManager.nextOrder()
+            }
+
+        val fileID = ProfileManager.nextFileID()
+        val configDirectory = File(context.filesDir, "configs").also { it.mkdirs() }
+        val configFile = File(configDirectory, "$fileID.json")
+        configFile.writeText(config)
+        typedProfile.path = configFile.path
+
+        ProfileManager.create(profile, andSelect = true)
         return profile
     }
 }

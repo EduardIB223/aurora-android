@@ -817,6 +817,7 @@ class MainActivity :
                     showStartFab = showStartFab,
                     showStatusBar = showStatusBar,
                     newProfileArgs = newProfileArgs,
+                    onStartService = { startService() },
                     onClearNewProfileArgs = { newProfileArgs = NewProfileArgs() },
                     onOpenNewProfile = openNewProfile,
                     dashboardViewModel = dashboardViewModel,
@@ -927,11 +928,13 @@ class MainActivity :
                         }
                     }
                 } else {
-                    // Start FAB (shown when service is stopped and a profile is selected)
+                    // Start FAB — not on the dashboard, which carries the large
+                    // connect button instead.
                     androidx.compose.animation.AnimatedVisibility(
                         visible = currentServiceStatus == Status.Stopped &&
                             dashboardUiState.selectedProfileId != -1L &&
-                            !isSubScreen,
+                            !isSubScreen &&
+                            currentRootRoute != Screen.Dashboard.route,
                         enter = scaleIn(),
                         exit = scaleOut(),
                         modifier = Modifier

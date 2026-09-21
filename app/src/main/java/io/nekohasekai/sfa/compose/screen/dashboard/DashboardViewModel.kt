@@ -82,25 +82,24 @@ data class DashboardUiState(
     val systemProxyEnabled: Boolean = false,
     val systemProxySwitching: Boolean = false,
     // Card visibility settings
+    // Debug and Connections are hidden by default: they expose internals that
+    // don't mean anything to someone who just wants the tunnel up.
     val visibleCards: Set<CardGroup> =
         setOf(
             CardGroup.ClashMode,
             CardGroup.UploadTraffic,
             CardGroup.DownloadTraffic,
-            CardGroup.Debug,
-            CardGroup.Connections,
             CardGroup.SystemProxy,
             CardGroup.Profiles,
         ),
+    // Servers sit directly under the connect button; everything else follows.
     val cardOrder: List<CardGroup> =
         listOf(
+            CardGroup.Profiles,
             CardGroup.UploadTraffic,
             CardGroup.DownloadTraffic,
-            CardGroup.Debug,
-            CardGroup.Connections,
-            CardGroup.SystemProxy,
             CardGroup.ClashMode,
-            CardGroup.Profiles,
+            CardGroup.SystemProxy,
         ),
     val cardWidths: Map<CardGroup, CardWidth> =
         mapOf(

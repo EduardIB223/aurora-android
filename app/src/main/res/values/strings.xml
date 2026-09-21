@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <!-- App -->
-    <string name="app_name" translatable="false">sing-box</string>
+    <string name="app_name" translatable="false">Aurora</string>
     <string name="app_version_title">App version</string>
     <string name="language">Language</string>
     <string name="system_default">System default</string>
@@ -136,7 +136,7 @@
     <string name="profile_name">Name</string>
     <string name="profile_type">Type</string>
     <string name="profile_source">Source</string>
-    <string name="profile_url" translatable="false">URL</string>
+    <string name="profile_url">URL or vless:// link</string>
     <string name="profile_import_file">Import File</string>
     <string name="profile_create">Create</string>
     <string name="profile_share_url">Share URL as QR Code</string>
@@ -353,6 +353,16 @@
     <string name="error_empty_configuration">Empty configuration</string>
     <string name="error_empty_file">Empty file</string>
     <string name="error_decode_profile">Failed to decode profile: %s</string>
+    <string name="error_unsupported_share_link">Unsupported share link</string>
+    <string name="status_connected">Connected</string>
+    <string name="status_connecting">Connecting…</string>
+    <string name="status_disconnected">Disconnected</string>
+    <string name="speed_test">Speed test</string>
+    <string name="speed_test_running">Measuring…</string>
+    <string name="speed_test_start">Start</string>
+    <string name="speed_test_again">Run again</string>
+    <string name="speed_test_hint">Downloads a 20 MB sample through the current connection.</string>
+    <string name="speed_test_failed">Test failed: %s</string>
     <string name="error_invalid_configuration">Invalid sing-box configuration: %s</string>
     <string name="error_start_command_server">Start command server</string>
     <string name="error_create_service">Create service</string>

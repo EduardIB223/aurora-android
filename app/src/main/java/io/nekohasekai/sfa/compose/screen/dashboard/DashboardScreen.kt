@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.nekohasekai.sfa.R
 import io.nekohasekai.sfa.compose.base.UiEvent
+import io.nekohasekai.sfa.compose.component.AuroraPowerPanel
 import io.nekohasekai.sfa.compose.navigation.NewProfileArgs
 import io.nekohasekai.sfa.compose.topbar.OverrideTopBar
 import io.nekohasekai.sfa.constant.Status
@@ -45,6 +46,7 @@ fun DashboardScreen(
     showStartFab: Boolean = false,
     showStatusBar: Boolean = false,
     onOpenNewProfile: (NewProfileArgs) -> Unit = {},
+    onStartService: () -> Unit = {},
     viewModel: DashboardViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -136,6 +138,21 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = bottomPadding),
         ) {
+            // The connect control, mirroring the desktop client's round button.
+            item {
+                AuroraPowerPanel(
+                    serviceStatus = serviceStatus,
+                    profileName = uiState.selectedProfileName,
+                    onClick = {
+                        if (serviceStatus == Status.Stopped) {
+                            onStartService()
+                        } else {
+                            viewModel.toggleService()
+                        }
+                    },
+                )
+            }
+
             // Dynamic dashboard cards
             // Show cards when service is running OR if it's the Profiles card (always available)
             val serviceRunning = uiState.isStatusVisible

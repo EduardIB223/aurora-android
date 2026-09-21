@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <!-- App -->
-    <string name="app_name" translatable="false">sing-box</string>
+    <string name="app_name" translatable="false">Aurora</string>
     <string name="app_version_title">Версия приложения</string>
     <string name="language">Язык</string>
     <string name="system_default">Системный по умолчанию</string>
@@ -136,7 +136,7 @@
     <string name="profile_name">Имя</string>
     <string name="profile_type">Тип</string>
     <string name="profile_source">Источник</string>
-    <string name="profile_url" translatable="false">URL</string>
+    <string name="profile_url">URL или ссылка vless://</string>
     <string name="profile_import_file">Импортировать файл</string>
     <string name="profile_create">Создать</string>
     <string name="profile_share_url">Поделиться URL в виде QR-кода</string>
@@ -339,6 +339,16 @@
     <string name="error_empty_configuration">Пустая конфигурация</string>
     <string name="error_empty_file">Пустой файл</string>
     <string name="error_decode_profile">Не удалось декодировать профиль: %s</string>
+    <string name="error_unsupported_share_link">Ссылка не распознана</string>
+    <string name="status_connected">Подключено</string>
+    <string name="status_connecting">Подключение…</string>
+    <string name="status_disconnected">Отключено</string>
+    <string name="speed_test">Тест скорости</string>
+    <string name="speed_test_running">Измеряем…</string>
+    <string name="speed_test_start">Запустить</string>
+    <string name="speed_test_again">Ещё раз</string>
+    <string name="speed_test_hint">Скачивает 20 МБ через текущее соединение.</string>
+    <string name="speed_test_failed">Не удалось: %s</string>
     <string name="error_invalid_configuration">Недопустимая конфигурация sing-box: %s</string>
     <string name="error_start_command_server">Запуск сервера команд</string>
     <string name="error_create_service">Создание службы</string>

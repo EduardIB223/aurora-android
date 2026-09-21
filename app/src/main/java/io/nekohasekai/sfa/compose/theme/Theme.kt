@@ -17,23 +17,62 @@ import androidx.core.view.WindowCompat
 
 private val DarkColorScheme =
     darkColorScheme(
-        primary = SingBoxPrimary,
-        secondary = SingBoxPrimaryLight,
-        tertiary = LogBlue,
+        primary = AuroraAccent,
+        onPrimary = AuroraText,
+        primaryContainer = AuroraAccentDark,
+        onPrimaryContainer = AuroraText,
+        secondary = AuroraCyan,
+        onSecondary = AuroraBg,
+        secondaryContainer = AuroraSurface3,
+        onSecondaryContainer = AuroraText,
+        tertiary = AuroraFuchsia,
+        onTertiary = AuroraText,
+        background = AuroraBg,
+        onBackground = AuroraText,
+        surface = AuroraSurface,
+        onSurface = AuroraText,
+        surfaceVariant = AuroraSurface2,
+        onSurfaceVariant = AuroraTextDim,
+        surfaceContainer = AuroraSurface2,
+        surfaceContainerHigh = AuroraSurface3,
+        surfaceContainerHighest = AuroraSurface3,
+        surfaceContainerLow = AuroraSurface,
+        surfaceContainerLowest = AuroraBg,
+        outline = AuroraTextDim,
     )
 
 private val LightColorScheme =
     lightColorScheme(
-        primary = SingBoxPrimary,
-        secondary = SingBoxPrimaryDark,
-        tertiary = LogBlue,
+        primary = AuroraAccent,
+        onPrimary = AuroraSurfaceLight,
+        primaryContainer = AuroraSurfaceLight3,
+        onPrimaryContainer = AuroraAccentDark,
+        secondary = AuroraCyan,
+        onSecondary = AuroraSurfaceLight,
+        secondaryContainer = AuroraSurfaceLight3,
+        onSecondaryContainer = AuroraTextLight,
+        tertiary = AuroraFuchsia,
+        onTertiary = AuroraSurfaceLight,
+        background = AuroraBgLight,
+        onBackground = AuroraTextLight,
+        surface = AuroraSurfaceLight,
+        onSurface = AuroraTextLight,
+        surfaceVariant = AuroraSurfaceLight2,
+        onSurfaceVariant = AuroraTextLightDim,
+        surfaceContainer = AuroraSurfaceLight2,
+        surfaceContainerHigh = AuroraSurfaceLight3,
+        surfaceContainerHighest = AuroraSurfaceLight3,
+        surfaceContainerLow = AuroraSurfaceLight,
+        surfaceContainerLowest = AuroraSurfaceLight,
+        outline = AuroraTextLightDim,
     )
 
 @Composable
 fun SFATheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    // Off by default: the Aurora palette should look the same on every device
+    // rather than being recoloured by the system wallpaper.
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme =
