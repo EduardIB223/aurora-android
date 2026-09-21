@@ -14,8 +14,10 @@ import java.io.Closeable
 
 class GitHubUpdateChecker : Closeable {
     companion object {
-        private const val RELEASES_URL = "https://api.github.com/repos/SagerNet/sing-box/releases"
-        private const val METADATA_FILENAME = "SFA-version-metadata.json"
+        // Aurora's own releases. Pointing at upstream sing-box would offer the
+        // official app — a different package and signature — as an "update".
+        private const val RELEASES_URL = "https://api.github.com/repos/EduardIB223/aurora-android/releases"
+        private const val METADATA_FILENAME = "aurora-version-metadata.json"
     }
 
     private val client = Libbox.newHTTPClient().apply {
@@ -46,12 +48,7 @@ class GitHubUpdateChecker : Closeable {
         val release = selected?.release ?: return null
         val metadata = selected.metadata
 
-        val isLegacy = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
-        val apkAsset = release.assets.find { asset ->
-            asset.name.endsWith(".apk") &&
-                !asset.name.contains("play") &&
-                asset.name.contains("legacy-android-5") == isLegacy
-        }
+        val apkAsset = pickApk(release.assets)
 
         return UpdateInfo(
             versionCode = metadata.versionCode,
@@ -62,6 +59,26 @@ class GitHubUpdateChecker : Closeable {
             isPrerelease = release.prerelease,
             fileSize = apkAsset?.size ?: 0,
         )
+    }
+
+    /**
+     * The APK built for this device's CPU, falling back to the universal one.
+     * Taking the first .apk could hand an ARM phone the x86 build, which then
+     * fails to install.
+     */
+    private fun pickApk(assets: List<GitHubAsset>): GitHubAsset? {
+        val isLegacy = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+        val apks = assets.filter { asset ->
+            asset.name.endsWith(".apk") &&
+                !asset.name.contains("play") &&
+                asset.name.contains("legacy-android-5") == isLegacy
+        }
+        for (abi in Build.SUPPORTED_ABIS) {
+            // Match whole name segments: "x86" must not pick the x86_64 build.
+            val segment = Regex("(^|[-_.])${Regex.escape(abi)}([-.]|$)")
+            apks.find { segment.containsMatchIn(it.name.removeSuffix(".apk") + ".") }?.let { return it }
+        }
+        return apks.find { it.name.contains("universal") } ?: apks.firstOrNull()
     }
 
     private fun getReleases(): List<GitHubRelease> {

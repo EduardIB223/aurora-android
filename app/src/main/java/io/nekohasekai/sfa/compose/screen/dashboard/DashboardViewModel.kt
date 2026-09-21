@@ -1,5 +1,6 @@
 package io.nekohasekai.sfa.compose.screen.dashboard
 
+import io.nekohasekai.sfa.utils.RemoteProfileLoader
 import androidx.lifecycle.viewModelScope
 import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.libbox.OutboundGroup
@@ -346,7 +347,7 @@ class DashboardViewModel :
 
             try {
                 // Fetch remote config
-                val content = HTTPClient().use { it.getString(profile.typed.remoteURL) }
+                val content = RemoteProfileLoader.fetch(profile.typed.remoteURL).content
                 Libbox.checkConfig(content)
 
                 // Check if content changed

@@ -1,0 +1,234 @@
+From a53a7f673966018e105325c76d99a9225a08d2db Mon Sep 17 00:00:00 2001
+From: orangpt <orangpthub@gmail.com>
+Date: Mon, 21 Sep 2026 19:44:17 +0300
+Subject: [PATCH] =?UTF-8?q?libbox:=20URLTestConfig=20=E2=80=94=20probe=20e?=
+ =?UTF-8?q?very=20server=20of=20a=20profile=20without=20the=20VPN?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Starts a throwaway instance with no inbounds and fetches a URL through each
+non-group outbound, returning per-server delay. Lets a client check a whole
+server list while disconnected instead of trusting a TCP connect, which dead
+servers still answer.
+
+The config-check platform stub refuses to start its interface monitor, so a
+started instance needs a passive monitor instead; it never touches netlink,
+which Android forbids apps.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+---
+ experimental/libbox/urltest_config.go      | 143 +++++++++++++++++++++
+ experimental/libbox/urltest_config_test.go |  50 +++++++
+ 2 files changed, 193 insertions(+)
+ create mode 100644 experimental/libbox/urltest_config.go
+ create mode 100644 experimental/libbox/urltest_config_test.go
+
+diff --git a/experimental/libbox/urltest_config.go b/experimental/libbox/urltest_config.go
+new file mode 100644
+index 0000000..5a36ca2
+--- /dev/null
++++ b/experimental/libbox/urltest_config.go
+@@ -0,0 +1,143 @@
++package libbox
++
++import (
++	"context"
++	"sort"
++	"sync"
++	"time"
++
++	box "github.com/sagernet/sing-box"
++	"github.com/sagernet/sing-box/adapter"
++	"github.com/sagernet/sing-box/common/urltest"
++	C "github.com/sagernet/sing-box/constant"
++	tun "github.com/sagernet/sing-tun"
++	E "github.com/sagernet/sing/common/exceptions"
++	"github.com/sagernet/sing/common/logger"
++	"github.com/sagernet/sing/service"
++)
++
++// urlTestPlatform is the config-check stub made safe to actually start: its
++// default-interface monitor is passive instead of refusing to start. Nothing
++// here touches netlink (which Android forbids apps), so dialing falls back to
++// plain sockets on the current network — exactly what a probe wants.
++type urlTestPlatform struct {
++	platformInterfaceStub
++}
++
++func (p *urlTestPlatform) CreateDefaultInterfaceMonitor(logger logger.Logger) tun.DefaultInterfaceMonitor {
++	return &passiveInterfaceMonitor{}
++}
++
++type passiveInterfaceMonitor struct {
++	interfaceMonitorStub
++}
++
++func (m *passiveInterfaceMonitor) Start() error { return nil }
++
++func (m *passiveInterfaceMonitor) Close() error { return nil }
++
++// URLTestResult is the outcome of probing one server of a profile.
++type URLTestResult struct {
++	Tag string
++	// Delay is the round trip in milliseconds; 0 when the server failed.
++	Delay int32
++	Error string
++}
++
++type URLTestResultIterator interface {
++	Len() int32
++	HasNext() bool
++	Next() *URLTestResult
++}
++
++// maxParallelProbes bounds concurrent handshakes so a long server list does
++// not trip timeouts on a phone's modest connection.
++const maxParallelProbes = 16
++
++// URLTestConfig measures every server of a profile by fetching testURL
++// through it, without the VPN running.
++//
++// It starts a throwaway instance with no inbounds — nothing is captured or
++// rerouted — so the check works while disconnected, like the desktop app's.
++// A server passes only if real traffic goes through: TLS/REALITY, protocol
++// auth and transport included, which a bare TCP connect cannot tell.
++func URLTestConfig(configContent string, testURL string, timeoutMillis int32) (URLTestResultIterator, error) {
++	ctx := baseContext(nil)
++	options, err := parseConfig(ctx, configContent)
++	if err != nil {
++		return nil, err
++	}
++
++	// No TUN or listeners: this instance only dials out.
++	options.Inbounds = nil
++	if options.Route != nil {
++		options.Route.AutoDetectInterface = false
++	}
++	// The running VPN may hold the cache file's lock; the check needs neither
++	// that nor the Clash API.
++	options.Experimental = nil
++
++	ctx, cancel := context.WithCancel(ctx)
++	defer cancel()
++	ctx = service.ContextWith[adapter.PlatformInterface](ctx, &urlTestPlatform{})
++
++	instance, err := box.New(box.Options{Context: ctx, Options: options})
++	if err != nil {
++		return nil, E.Cause(err, "create test instance")
++	}
++	defer instance.Close()
++	if err = instance.Start(); err != nil {
++		return nil, E.Cause(err, "start test instance")
++	}
++
++	var targets []adapter.Outbound
++	for _, outbound := range instance.Outbound().Outbounds() {
++		if _, isGroup := outbound.(adapter.OutboundGroup); isGroup {
++			continue
++		}
++		switch outbound.Type() {
++		case C.TypeDirect, C.TypeBlock, C.TypeDNS:
++			continue
++		}
++		targets = append(targets, outbound)
++	}
++
++	timeout := time.Duration(timeoutMillis) * time.Millisecond
++	if timeout <= 0 {
++		timeout = 8 * time.Second
++	}
++
++	results := make([]*URLTestResult, len(targets))
++	semaphore := make(chan struct{}, maxParallelProbes)
++	var waitGroup sync.WaitGroup
++	for i, outbound := range targets {
++		waitGroup.Add(1)
++		go func(index int, outbound adapter.Outbound) {
++			defer waitGroup.Done()
++			semaphore <- struct{}{}
++			defer func() { <-semaphore }()
++
++			result := &URLTestResult{Tag: outbound.Tag()}
++			probeCtx, probeCancel := context.WithTimeout(ctx, timeout)
++			defer probeCancel()
++			delay, probeErr := urltest.URLTest(probeCtx, testURL, outbound)
++			if probeErr != nil {
++				result.Error = probeErr.Error()
++			} else {
++				result.Delay = int32(delay)
++			}
++			results[index] = result
++		}(i, outbound)
++	}
++	waitGroup.Wait()
++
++	// Working servers first, fastest first; failures keep their config order.
++	sort.SliceStable(results, func(i, j int) bool {
++		a, b := results[i].Delay, results[j].Delay
++		if a == 0 || b == 0 {
++			return a != 0 && b == 0
++		}
++		return a < b
++	})
++	return newIterator(results), nil
++}
+diff --git a/experimental/libbox/urltest_config_test.go b/experimental/libbox/urltest_config_test.go
+new file mode 100644
+index 0000000..98ad5a1
+--- /dev/null
++++ b/experimental/libbox/urltest_config_test.go
+@@ -0,0 +1,50 @@
++package libbox
++
++import (
++	"os"
++	"testing"
++)
++
++// Opt-in end-to-end check against a real profile (needs network):
++//
++//	AURORA_URLTEST_CONFIG=/path/config.json go test ./experimental/libbox -run TestURLTestConfigLive -v
++func TestURLTestConfigLive(t *testing.T) {
++	path := os.Getenv("AURORA_URLTEST_CONFIG")
++	if path == "" {
++		t.Skip("set AURORA_URLTEST_CONFIG to run")
++	}
++	content, err := os.ReadFile(path)
++	if err != nil {
++		t.Fatal(err)
++	}
++
++	iterator, err := URLTestConfig(string(content), "https://www.gstatic.com/generate_204", 8000)
++	if err != nil {
++		t.Fatal(err)
++	}
++
++	total, working := 0, 0
++	for iterator.HasNext() {
++		result := iterator.Next()
++		total++
++		if result.Delay > 0 {
++			working++
++		}
++		if total <= 5 {
++			t.Logf("%-40s delay=%-5d err=%s", result.Tag, result.Delay, result.Error)
++		}
++	}
++	t.Logf("servers probed: %d, working: %d", total, working)
++	if total == 0 {
++		t.Fatal("no servers were probed")
++	}
++	if working == 0 {
++		t.Fatal("expected at least one working server")
++	}
++}
++
++func TestURLTestConfigRejectsBrokenConfig(t *testing.T) {
++	if _, err := URLTestConfig("{not json", "https://www.gstatic.com/generate_204", 1000); err == nil {
++		t.Fatal("expected an error for an invalid config")
++	}
++}
+-- 
+2.52.0.windows.1
+

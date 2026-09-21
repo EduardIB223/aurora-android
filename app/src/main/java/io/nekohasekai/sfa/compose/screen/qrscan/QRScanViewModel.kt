@@ -14,8 +14,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LifecycleOwner
 import io.nekohasekai.libbox.Libbox
+import io.nekohasekai.sfa.R
 import io.nekohasekai.sfa.qrs.QRSDecoder
 import io.nekohasekai.sfa.qrs.readIntLE
+import io.nekohasekai.sfa.utils.ProxyLinkParser
 import io.nekohasekai.sfa.vendor.Vendor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +29,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 sealed class QRScanResult {
     data class RemoteProfile(val uri: Uri) : QRScanResult()
+
+    /** A share link (vless://, …) or subscription URL, e.g. from Aurora on a PC. */
+    data class Link(val value: String) : QRScanResult()
     data class QRSData(val data: ByteArray) : QRScanResult() {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -379,9 +384,23 @@ class QRScanViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun processQRCode(value: String): Boolean {
         try {
-            val uri = Uri.parse(value)
+            val text = value.trim()
+
+            // Share links and subscription URLs — what Aurora on a PC, panels and
+            // other clients put in their QR codes. Only accepting sing-box's own
+            // import link used to reject all of them outright.
+            if (ProxyLinkParser.isProxyLink(text) ||
+                (!text.startsWith("sing-box://", true) && ProxyLinkParser.subscriptionUrl(text) != null)
+            ) {
+                _uiState.update { it.copy(result = QRScanResult.Link(text)) }
+                return true
+            }
+
+            val uri = Uri.parse(text)
             if (uri.scheme != "sing-box" || uri.host != "import-remote-profile") {
-                _uiState.update { it.copy(errorMessage = "Not a valid sing-box remote profile URI") }
+                _uiState.update {
+                    it.copy(errorMessage = getApplication<Application>().getString(R.string.qr_not_a_profile))
+                }
                 imageAnalysis?.setAnalyzer(analysisExecutor, imageAnalyzer!!)
                 return false
             }

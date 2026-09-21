@@ -1,5 +1,6 @@
 package io.nekohasekai.sfa.bg
 
+import io.nekohasekai.sfa.utils.RemoteProfileLoader
 import android.content.Context
 import android.util.Log
 import androidx.work.BackoffPolicy
@@ -75,7 +76,7 @@ class UpdateProfileWork {
                     continue
                 }
                 try {
-                    val content = HTTPClient().use { it.getString(profile.typed.remoteURL) }
+                    val content = RemoteProfileLoader.fetch(profile.typed.remoteURL).content
                     Libbox.checkConfig(content)
                     val file = File(profile.typed.path)
                     if (file.readText() != content) {

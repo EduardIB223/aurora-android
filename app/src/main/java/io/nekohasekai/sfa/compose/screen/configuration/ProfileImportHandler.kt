@@ -10,6 +10,7 @@ import io.nekohasekai.sfa.database.Profile
 import io.nekohasekai.sfa.database.ProfileManager
 import io.nekohasekai.sfa.database.TypedProfile
 import io.nekohasekai.sfa.utils.ProxyLinkParser
+import io.nekohasekai.sfa.utils.RemoteProfileLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -138,13 +139,13 @@ class ProfileImportHandler(private val context: Context) {
                 return@withContext QRCodeParseResult.LocalProfile(name = parsed.name)
             }
 
-            // Check if it's a direct URL
-            if (data.startsWith("http://") || data.startsWith("https://")) {
-                val profileName = extractProfileNameFromUrl(data)
+            // Subscription URL, directly or wrapped by another client
+            // (https://…, clash://install-config?url=…, happ://add/…, sub://…).
+            ProxyLinkParser.subscriptionUrl(data)?.let { url ->
                 return@withContext QRCodeParseResult.RemoteProfile(
-                    name = profileName,
-                    host = extractHostFromUrl(data),
-                    url = data,
+                    name = extractProfileNameFromUrl(url),
+                    host = extractHostFromUrl(url),
+                    url = url,
                 )
             }
 
@@ -188,11 +189,10 @@ class ProfileImportHandler(private val context: Context) {
                 return@withContext importJsonConfiguration(parsed.config, parsed.name)
             }
 
-            // Check if it's a URL or direct profile content
-            if (data.startsWith("http://") || data.startsWith("https://")) {
-                // Handle remote profile URL
-                val profileName = extractProfileNameFromUrl(data)
-                importRemoteProfile(profileName, data)
+            // Subscription URL, directly or wrapped by another client.
+            val subscriptionUrl = ProxyLinkParser.subscriptionUrl(data)
+            if (subscriptionUrl != null) {
+                importRemoteProfile(extractProfileNameFromUrl(subscriptionUrl), subscriptionUrl)
             } else {
                 // Try to decode as profile content
                 val content =
@@ -289,11 +289,18 @@ class ProfileImportHandler(private val context: Context) {
                 userOrder = ProfileManager.nextOrder()
             }
 
-        // Create empty config file for remote profile
+        // Fetch the profile right away: an empty "{}" placeholder imports fine but
+        // cannot connect until someone remembers to press Update.
         val fileID = ProfileManager.nextFileID()
         val configDirectory = File(context.filesDir, "configs").also { it.mkdirs() }
         val configFile = File(configDirectory, "$fileID.json")
-        configFile.writeText("{}")
+        val content =
+            try {
+                RemoteProfileLoader.fetch(url).content
+            } catch (e: Exception) {
+                return ImportResult.Error(context.getString(R.string.error_decode_profile, e.message))
+            }
+        configFile.writeText(content)
         typedProfile.path = configFile.path
 
         // Create profile in database and select it

@@ -1,5 +1,6 @@
 package io.nekohasekai.sfa.compose.screen.configuration
 
+import io.nekohasekai.sfa.utils.RemoteProfileLoader
 import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
@@ -267,7 +268,7 @@ class NewProfileViewModel(application: Application) : AndroidViewModel(applicati
                                     File(Uri.parse(sourceURL).path!!).readText()
                                 }
                                 sourceURL.startsWith("http://") || sourceURL.startsWith("https://") -> {
-                                    HTTPClient().use { it.getString(sourceURL) }
+                                    RemoteProfileLoader.fetch(sourceURL).content
                                 }
                                 else -> throw Exception("Unsupported source: $sourceURL")
                             }
@@ -320,7 +321,7 @@ class NewProfileViewModel(application: Application) : AndroidViewModel(applicati
         typedProfile.path = configFile.path
 
         // Fetch initial config - this MUST succeed for remote profiles
-        val content = HTTPClient().use { it.getString(state.remoteUrl) }
+        val content = RemoteProfileLoader.fetch(state.remoteUrl).content
         Libbox.checkConfig(content)
         val configContent = content
 

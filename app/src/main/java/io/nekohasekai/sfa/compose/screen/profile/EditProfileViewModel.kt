@@ -1,5 +1,6 @@
 package io.nekohasekai.sfa.compose.screen.profile
 
+import io.nekohasekai.sfa.utils.RemoteProfileLoader
 import android.app.Application
 import android.content.Context
 import android.net.Uri
@@ -255,7 +256,7 @@ class EditProfileViewModel(application: Application) : AndroidViewModel(applicat
                 var selectedProfileUpdated = false
 
                 // Fetch remote config
-                val content = HTTPClient().use { it.getString(profile.typed.remoteURL) }
+                val content = RemoteProfileLoader.fetch(profile.typed.remoteURL).content
                 Libbox.checkConfig(content)
 
                 // Check if content changed

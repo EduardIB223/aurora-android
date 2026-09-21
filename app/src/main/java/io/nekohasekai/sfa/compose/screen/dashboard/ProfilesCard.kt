@@ -1,5 +1,7 @@
 package io.nekohasekai.sfa.compose.screen.dashboard
 
+import android.content.ClipboardManager
+import android.content.Context
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,13 +27,16 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -63,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.libbox.ProfileContent
 import io.nekohasekai.sfa.R
+import io.nekohasekai.sfa.compose.component.PingAllDialog
 import io.nekohasekai.sfa.compose.component.qr.QRCodeDialog
 import io.nekohasekai.sfa.compose.component.qr.QRSDialog
 import io.nekohasekai.sfa.compose.component.qr.QRScanSheet
@@ -103,11 +109,52 @@ fun ProfilesCard(
     onShowProfilePickerSheet: () -> Unit,
     onHideProfilePickerSheet: () -> Unit,
     onOpenNewProfile: (NewProfileArgs) -> Unit,
+    vpnRunning: Boolean = false,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
     val importHandler = remember { ProfileImportHandler(context) }
+    var showPingAll by remember { mutableStateOf(false) }
+
+    // One path for every textual link: scanned QR codes and the clipboard alike.
+    // Subscriptions open the new-profile form (to review auto-update), single
+    // share links become a profile straight away.
+    val importLinkText: (String) -> Unit = { text ->
+        coroutineScope.launch {
+            when (val parseResult = importHandler.parseQRCode(text)) {
+                is ProfileImportHandler.QRCodeParseResult.RemoteProfile -> {
+                    withContext(Dispatchers.Main) {
+                        onOpenNewProfile(
+                            NewProfileArgs(
+                                importName = parseResult.name,
+                                importUrl = parseResult.url,
+                            ),
+                        )
+                    }
+                }
+                is ProfileImportHandler.QRCodeParseResult.LocalProfile -> {
+                    when (val importResult = importHandler.importFromQRCode(text)) {
+                        is ProfileImportHandler.ImportResult.Success -> {
+                            withContext(Dispatchers.Main) {
+                                onProfileEdit(importResult.profile)
+                            }
+                        }
+                        is ProfileImportHandler.ImportResult.Error -> {
+                            withContext(Dispatchers.Main) {
+                                context.errorDialogBuilder(Exception(importResult.message)).show()
+                            }
+                        }
+                    }
+                }
+                is ProfileImportHandler.QRCodeParseResult.Error -> {
+                    withContext(Dispatchers.Main) {
+                        context.errorDialogBuilder(Exception(parseResult.message)).show()
+                    }
+                }
+            }
+        }
+    }
 
     var showQRCodeDialog by remember { mutableStateOf(false) }
     var qrCodeProfile by remember { mutableStateOf<Profile?>(null) }
@@ -358,8 +405,33 @@ fun ProfilesCard(
                         }
                     },
                 )
+
+                // One tap checks every server of the profile, like on the PC.
+                if (selectedProfile != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    FilledTonalButton(
+                        onClick = { showPingAll = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.NetworkCheck,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.ping_all))
+                    }
+                }
             }
         }
+    }
+
+    if (showPingAll && selectedProfile != null) {
+        PingAllDialog(
+            configPath = selectedProfile.typed.path,
+            vpnRunning = vpnRunning,
+            onDismiss = { showPingAll = false },
+        )
     }
 
     if (showProfilePickerSheet) {
@@ -428,6 +500,38 @@ fun ProfilesCard(
                     },
                     supportingContent = {
                         Text(stringResource(R.string.scan_qr_code_description))
+                    },
+                )
+
+                ListItem(
+                    modifier = Modifier.clickable {
+                        onHideAddProfileSheet()
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val text =
+                            clipboard.primaryClip
+                                ?.takeIf { it.itemCount > 0 }
+                                ?.getItemAt(0)
+                                ?.coerceToText(context)
+                                ?.toString()
+                                ?.trim()
+                        if (text.isNullOrEmpty()) {
+                            Toast.makeText(context, R.string.clipboard_empty, Toast.LENGTH_SHORT).show()
+                        } else {
+                            importLinkText(text)
+                        }
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Outlined.ContentPaste,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    },
+                    headlineContent = {
+                        Text(stringResource(R.string.profile_add_paste_link))
+                    },
+                    supportingContent = {
+                        Text(stringResource(R.string.paste_link_description))
                     },
                 )
 
@@ -578,41 +682,8 @@ fun ProfilesCard(
                             }
                         }
                     }
-                    is QRScanResult.RemoteProfile -> {
-                        coroutineScope.launch {
-                            when (val parseResult = importHandler.parseQRCode(result.uri.toString())) {
-                                is ProfileImportHandler.QRCodeParseResult.RemoteProfile -> {
-                                    withContext(Dispatchers.Main) {
-                                        onOpenNewProfile(
-                                            NewProfileArgs(
-                                                importName = parseResult.name,
-                                                importUrl = parseResult.url,
-                                            ),
-                                        )
-                                    }
-                                }
-                                is ProfileImportHandler.QRCodeParseResult.LocalProfile -> {
-                                    when (val importResult = importHandler.importFromQRCode(result.uri.toString())) {
-                                        is ProfileImportHandler.ImportResult.Success -> {
-                                            withContext(Dispatchers.Main) {
-                                                onProfileEdit(importResult.profile)
-                                            }
-                                        }
-                                        is ProfileImportHandler.ImportResult.Error -> {
-                                            withContext(Dispatchers.Main) {
-                                                context.errorDialogBuilder(Exception(importResult.message)).show()
-                                            }
-                                        }
-                                    }
-                                }
-                                is ProfileImportHandler.QRCodeParseResult.Error -> {
-                                    withContext(Dispatchers.Main) {
-                                        context.errorDialogBuilder(Exception(parseResult.message)).show()
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    is QRScanResult.RemoteProfile -> importLinkText(result.uri.toString())
+                    is QRScanResult.Link -> importLinkText(result.value)
                 }
             },
         )

@@ -458,4 +458,18 @@
     <string name="privilege_module_restart_notification_title">Требуется перезагрузка</string>
     <string name="privilege_module_restart_notification_message">Модуль LSPosed обновлён. Перезагрузите устройство, чтобы применить изменения.</string>
     <string name="privilege_module_restart_channel">Модуль LSPosed</string>
+    <!-- Aurora: импорт ссылок -->
+    <string name="profile_add_paste_link">Вставить ссылку</string>
+    <string name="paste_link_description">Ссылка на сервер или подписку из буфера обмена</string>
+    <string name="clipboard_empty">Буфер обмена пуст</string>
+    <string name="qr_not_a_profile">В этом QR-коде нет ссылки на сервер или подписку</string>
+    <!-- Aurora: пинг всех -->
+    <string name="ping_all">Пинг всех</string>
+    <string name="ping_all_running">Проверка…</string>
+    <string name="ping_all_summary">Отвечают %1$d из %2$d</string>
+    <string name="ping_all_no_servers">В этом профиле нет серверов для проверки</string>
+    <string name="ping_all_failed">Проверка не удалась: %s</string>
+    <string name="ping_all_again">Ещё раз</string>
+    <string name="ping_all_no_response">не отвечает</string>
+    <string name="ping_all_through_vpn">VPN включён, поэтому серверы измерены через активный туннель.</string>
 </resources>

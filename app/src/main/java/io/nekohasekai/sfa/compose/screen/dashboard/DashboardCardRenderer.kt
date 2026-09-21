@@ -124,6 +124,7 @@ fun DashboardCardRenderer(
                 onShowProfilePickerSheet = onShowProfilePickerSheet,
                 onHideProfilePickerSheet = onHideProfilePickerSheet,
                 onOpenNewProfile = onOpenNewProfile,
+                vpnRunning = serviceStatus == Status.Started,
             )
         }
     }

@@ -472,4 +472,18 @@
     <string name="privilege_module_restart_notification_title">Reboot required</string>
     <string name="privilege_module_restart_notification_message">LSPosed module updated. Reboot to apply changes.</string>
     <string name="privilege_module_restart_channel">LSPosed Module</string>
+    <!-- Aurora: link import -->
+    <string name="profile_add_paste_link">Paste link</string>
+    <string name="paste_link_description">Server link or subscription URL from the clipboard</string>
+    <string name="clipboard_empty">Clipboard is empty</string>
+    <string name="qr_not_a_profile">This QR code holds no server link or subscription</string>
+    <!-- Aurora: ping all -->
+    <string name="ping_all">Ping all</string>
+    <string name="ping_all_running">Pinging…</string>
+    <string name="ping_all_summary">%1$d of %2$d servers respond</string>
+    <string name="ping_all_no_servers">This profile has no servers to ping</string>
+    <string name="ping_all_failed">Ping failed: %s</string>
+    <string name="ping_all_again">Again</string>
+    <string name="ping_all_no_response">no response</string>
+    <string name="ping_all_through_vpn">VPN is on, so servers were measured through the active tunnel.</string>
 </resources>
