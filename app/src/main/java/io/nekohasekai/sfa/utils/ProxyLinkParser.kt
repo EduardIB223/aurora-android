@@ -231,6 +231,8 @@ object ProxyLinkParser {
 
     private fun parseVless(link: String): Server {
         val l = splitLink(link)
+        val network = l.param("type")?.lowercase()
+        if (network == "xhttp" || network == "splithttp") return parseVlessXray(l)
         val outbound =
             JSONObject().apply {
                 put("type", "vless")
@@ -245,6 +247,73 @@ object ProxyLinkParser {
         l.param("flow")?.let { if (!hasTransport) outbound.put("flow", it) }
         applyTls(outbound, l, defaultSni = l.host)
         return Server(l.name.ifBlank { l.host }, outbound)
+    }
+
+    /**
+     * VLESS over XHTTP — the transport Russian whitelist-bypass servers use
+     * (a Russian IP behind a whitelisted TLS name). sing-box has no XHTTP, so
+     * the server runs in the xray-core built into our libbox: the outbound
+     * is Xray JSON, the same one the desktop builds.
+     */
+    private fun parseVlessXray(l: Link): Server {
+        val security = l.param("security")?.lowercase() ?: "none"
+        val xhttp =
+            JSONObject().apply {
+                put("path", l.param("path") ?: "/")
+                put("mode", l.param("mode") ?: "auto")
+                l.param("host")?.let { put("host", it) }
+                l.param("extra")?.let { extra -> runCatching { put("extra", JSONObject(extra)) } }
+            }
+        val stream =
+            JSONObject().apply {
+                put("network", "xhttp")
+                put("security", security)
+                put("xhttpSettings", xhttp)
+                when (security) {
+                    "reality" -> put(
+                        "realitySettings",
+                        JSONObject().apply {
+                            put("serverName", l.param("sni").orEmpty())
+                            put("fingerprint", l.param("fp") ?: "chrome")
+                            put("publicKey", l.param("pbk").orEmpty())
+                            put("shortId", l.param("sid").orEmpty())
+                            put("spiderX", l.param("spx").orEmpty())
+                        },
+                    )
+                    "tls" -> put(
+                        "tlsSettings",
+                        JSONObject().apply {
+                            put("serverName", l.param("sni") ?: l.host)
+                            put("fingerprint", l.param("fp") ?: "chrome")
+                            l.param("alpn")?.let { put("alpn", JSONArray(it.split(",").map(String::trim))) }
+                        },
+                    )
+                }
+            }
+        val user =
+            JSONObject().apply {
+                put("id", percentDecode(l.userInfo ?: error("missing uuid")))
+                put("encryption", l.param("encryption") ?: "none")
+                put("flow", l.param("flow").orEmpty())
+            }
+        val xray =
+            JSONObject().apply {
+                put("protocol", "vless")
+                put(
+                    "settings",
+                    JSONObject().put(
+                        "vnext",
+                        JSONArray().put(
+                            JSONObject()
+                                .put("address", l.host)
+                                .put("port", l.port)
+                                .put("users", JSONArray().put(user)),
+                        ),
+                    ),
+                )
+                put("streamSettings", stream)
+            }
+        return Server(l.name.ifBlank { l.host }, JSONObject().put("type", "xray").put("outbound", xray))
     }
 
     private fun parseTrojan(link: String): Server {
@@ -469,15 +538,44 @@ object ProxyLinkParser {
 
     // ── Config ──
 
-    /** Domains that must stay on the local connection to keep working. */
-    private val directDomainSuffixes =
+    // Russian services that break or slow down through a foreign exit —
+    // the same list as the desktop's "RU Bypass" (ru_direct.rs).
+
+    /** Russian sites that only work through the VPN, checked before the list below. */
+    private val proxyDomainSuffixes =
         listOf(
-            ".ru", ".рф", "yandex.com", "vk.com", "mail.ru", "ok.ru",
-            "sberbank.ru", "gosuslugi.ru", "wildberries.ru", "ozon.ru",
-            "avito.ru", "tinkoff.ru", "alfabank.ru", "vtb.ru",
+            "getorbita.ru",
         )
 
-    private val directIpRanges =
+    /**
+     * Domains that stay on the local connection. sing-box matches the ASCII
+     * form of a name, so ".рф" needs its punycode "xn--p1ai" too; CDNs like
+     * userapi.com (VK) or ozonusercontent.com (Ozon) are listed by name.
+     */
+    internal val directDomainSuffixes =
+        listOf(
+            ".ru", ".su", ".рф", "xn--p1ai", "vk.com",
+            "vk.me", "vk.cc", "vk.link", "vk-portal.net", "vk-cdn.net",
+            "vk-cdn.me", "userapi.com", "vkuser.net", "vkuseraudio.net", "vkuservideo.net",
+            "mycdn.me", "mail.ru", "ok.ru", "mradx.net", "ozon.ru",
+            "ozonusercontent.com", "ozon.kz", "ozon.by", "wildberries.ru", "wildberries.by",
+            "wbstatic.net", "avito.ru", "avito.st", "youla.io", "megamarket.tech",
+            "lenta.com", "lmru.tech", "sberbank.ru", "gosuslugi.ru", "tinkoff.ru",
+            "tbank-online.com", "alfabank.ru", "alfa-bank.com", "alfabank.com", "alfafinance.biz",
+            "alfafx.com", "alfaprivate.com", "investalfabank.com", "beta-bank.com", "gazprombank.tech",
+            "moex.com", "tochka.com", "tochka-tech.com", "vtb.ru", "vtb.com",
+            "vtb.digital", "vtb.promo", "vtb24.com", "vtbrussia.com", "yandex",
+            "yandex.com", "yandex.net", "yandex.org", "yandex.by", "yandex.kz",
+            "yandex.kg", "yandex.az", "yandex.eu", "yandex.fr", "yandex.com.ge",
+            "yandex.co.il", "yandex.aero", "yandex.jobs", "yandex.cloud", "yandex-bank.net",
+            "yandexcloud.net", "yandexcom.net", "yandexadexchange.net", "yandexmetrica.com", "yandexwebcache.net",
+            "yandexwebcache.org", "yastat.net", "yastatic.net", "yads.tech", "okko.tv",
+            "premier.one", "2gis.com", "2gis.by", "2gis.com.cy", "gismeteo.com",
+            "1cfresh.com", "kontur.host", "tildaapi.com",
+        )
+
+    /** Yandex and VK address blocks, for connections made by IP. */
+    internal val directIpRanges =
         listOf(
             "5.45.192.0/18", "77.88.0.0/18", "87.240.128.0/18",
             "93.186.225.0/24", "95.142.192.0/20",
@@ -597,6 +695,11 @@ object ProxyLinkParser {
                                 // every route, so without this the PC, router and
                                 // printers were only reachable via the remote server.
                                 put(JSONObject().put("ip_is_private", true).put("outbound", DIRECT_TAG))
+                                put(
+                                    JSONObject()
+                                        .put("domain_suffix", JSONArray(proxyDomainSuffixes))
+                                        .put("outbound", PROXY_TAG),
+                                )
                                 put(
                                     JSONObject()
                                         .put("domain_suffix", JSONArray(directDomainSuffixes))

@@ -221,6 +221,46 @@ class ProxyLinkParserTest {
         assertNull(ProxyLinkParser.base64Decode("not base64!"))
         assertEquals("hello", ProxyLinkParser.base64Decode("aGVsbG8"))
     }
+
+    /** Whitelist-bypass servers: XHTTP runs in the xray-core inside our libbox. */
+    @Test
+    fun vlessXhttpRunsInXray() {
+        val ob = single(
+            "vless://$uuid@188.72.103.4:443?type=xhttp&path=%2Flive%2F&host=link.example.ru&mode=packet-up" +
+                "&security=tls&sni=cdn.tracker.yandex.net&fp=chrome&alpn=h2%2Chttp%2F1.1#BS-5",
+        )
+        assertEquals("xray", ob.getString("type"))
+        val xray = ob.getJSONObject("outbound")
+        assertEquals("vless", xray.getString("protocol"))
+        val vnext = xray.getJSONObject("settings").getJSONArray("vnext").getJSONObject(0)
+        assertEquals("188.72.103.4", vnext.getString("address"))
+        assertEquals(443, vnext.getInt("port"))
+        assertEquals(uuid, vnext.getJSONArray("users").getJSONObject(0).getString("id"))
+        val stream = xray.getJSONObject("streamSettings")
+        assertEquals("xhttp", stream.getString("network"))
+        assertEquals("packet-up", stream.getJSONObject("xhttpSettings").getString("mode"))
+        assertEquals("/live/", stream.getJSONObject("xhttpSettings").getString("path"))
+        assertEquals("link.example.ru", stream.getJSONObject("xhttpSettings").getString("host"))
+        assertEquals("cdn.tracker.yandex.net", stream.getJSONObject("tlsSettings").getString("serverName"))
+        assertEquals(2, stream.getJSONObject("tlsSettings").getJSONArray("alpn").length())
+    }
+
+    /** Ozon, VK and the rest go direct on the phone too — the desktop's list, CDNs included. */
+    @Test
+    fun configSendsRussianServicesDirect() {
+        val config = JSONObject(
+            ProxyLinkParser.buildConfig(ProxyLinkParser.parseAll("vless://$uuid@a.example.com:443?security=tls#A")),
+        )
+        val rules = config.getJSONObject("route").getJSONArray("rules")
+        val bySuffix = (0 until rules.length()).map { rules.getJSONObject(it) }.filter { it.has("domain_suffix") }
+        fun suffixes(i: Int) = bySuffix[i].getJSONArray("domain_suffix").let { a -> (0 until a.length()).map { a.getString(it) } }
+        assertEquals("the proxy exceptions come first", "proxy", bySuffix[0].getString("outbound"))
+        assertTrue("getorbita.ru" in suffixes(0))
+        assertEquals("direct", bySuffix[1].getString("outbound"))
+        for (d in listOf("ozon.ru", "ozonusercontent.com", "vk.com", "userapi.com", "vkuser.net", "xn--p1ai", "gosuslugi.ru")) {
+            assertTrue("$d must go direct", d in suffixes(1))
+        }
+    }
 }
 
 /**

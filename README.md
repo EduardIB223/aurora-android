@@ -18,13 +18,17 @@ What Aurora adds on top of SFA:
 
 ## Building
 
-The core is sing-box built as `libbox.aar`, with one addition
-(`patches/sing-box-aurora.patch`, used by *Ping all*):
+The core is sing-box built as `libbox.aar`, with additions in
+`patches/sing-box-aurora.patch`: probing every server for *Ping all*, and an
+`xray` outbound that runs one server in an embedded xray-core — for XHTTP, the
+transport Russian whitelist-bypass servers use. It needs Go 1.26 or newer.
 
 ```sh
 git clone https://github.com/SagerNet/sing-box && cd sing-box
 git checkout v1.13.21           # the core version this release was built with
 git am /path/to/aurora-android/patches/sing-box-aurora.patch
+git tag v1.13.21-aurora-xray    # the core reports this; Aurora for Windows sends
+                                # XHTTP servers only to a phone that does
 go run ./cmd/internal/build_libbox -target android   # needs ANDROID_NDK_HOME
 cp libbox.aar libbox-legacy.aar /path/to/aurora-android/app/libs/
 ```

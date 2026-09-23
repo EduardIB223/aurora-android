@@ -7,6 +7,8 @@ import io.nekohasekai.sfa.utils.RemoteProfileLoader
 import androidx.lifecycle.viewModelScope
 import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.libbox.OutboundGroup
+import io.nekohasekai.sfa.compose.model.toList
+import io.nekohasekai.sfa.utils.ServerSections
 import io.nekohasekai.libbox.StatusMessage
 import io.nekohasekai.sfa.bg.BoxService
 import io.nekohasekai.sfa.compose.base.BaseViewModel
@@ -55,6 +57,7 @@ data class DashboardUiState(
     val isLoading: Boolean = false,
     val hasGroups: Boolean = false,
     val groupsCount: Int = 0,
+    val liveRoute: ServerSections.LiveRoute? = null,
     val connectionsCount: Int = 0,
     val serviceStartTime: Long? = null,
     val deprecatedNotes: List<DeprecatedNote> = emptyList(),
@@ -478,6 +481,7 @@ class DashboardViewModel :
                     copy(
                         hasGroups = false,
                         groupsCount = 0,
+                        liveRoute = null,
                         connectionsCount = 0,
                         serviceStartTime = null,
                         clashModeVisible = false,
@@ -646,8 +650,18 @@ class DashboardViewModel :
     override fun updateGroups(newGroups: MutableList<OutboundGroup>) {
         viewModelScope.launch(Dispatchers.Main) {
             val hasGroups = newGroups.isNotEmpty()
+            val live = ServerSections.liveRoute(
+                newGroups.map { g ->
+                    ServerSections.GroupState(
+                        tag = g.tag,
+                        type = g.type,
+                        selected = g.selected,
+                        delays = g.items.toList().associate { it.tag to it.urlTestDelay },
+                    )
+                },
+            )
             updateState {
-                copy(hasGroups = hasGroups, groupsCount = newGroups.size)
+                copy(hasGroups = hasGroups, groupsCount = newGroups.size, liveRoute = live)
             }
         }
     }

@@ -74,6 +74,9 @@ import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.libbox.ProfileContent
 import io.nekohasekai.sfa.R
 import io.nekohasekai.sfa.compose.component.ServerPickerSheet
+import androidx.compose.ui.unit.sp
+import io.nekohasekai.sfa.compose.component.delayColor
+import io.nekohasekai.sfa.utils.ServerSections
 import io.nekohasekai.sfa.utils.ServerSelection
 import io.nekohasekai.sfa.utils.ServerSelectionStore
 import io.nekohasekai.sfa.compose.component.qr.QRCodeDialog
@@ -117,6 +120,7 @@ fun ProfilesCard(
     onHideProfilePickerSheet: () -> Unit,
     onOpenNewProfile: (NewProfileArgs) -> Unit,
     vpnRunning: Boolean = false,
+    liveRoute: ServerSections.LiveRoute? = null,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -436,18 +440,56 @@ fun ProfilesCard(
                                 }
                             }
                     }
-                    currentServer?.let { name ->
+                    val live = liveRoute.takeIf { vpnRunning }
+                    if (live != null || currentServer != null) {
                         Spacer(modifier = Modifier.height(12.dp))
                         OutlinedButton(
                             onClick = { serverPickerPing = false },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text(
-                                stringResource(R.string.server_current, name),
-                                modifier = Modifier.weight(1f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                            if (live != null) {
+                                // Connected: where traffic really goes, like the desktop's corner.
+                                val (flag, name) = ServerSections.splitFlag(live.server)
+                                Text(flag ?: "\uD83C\uDF10", fontSize = 20.sp)
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        name.ifBlank { live.server },
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    live.via?.let { via ->
+                                        Text(
+                                            if (via.startsWith(ServerSections.GROUP_AUTO_PREFIX)) {
+                                                stringResource(R.string.server_via_group_auto, via.removePrefix(ServerSections.GROUP_AUTO_PREFIX))
+                                            } else {
+                                                stringResource(R.string.server_via_auto)
+                                            },
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
+                                if (live.delay > 0) {
+                                    Text(
+                                        "${live.delay} ms",
+                                        color = delayColor(live.delay),
+                                        fontWeight = FontWeight.SemiBold,
+                                        style = MaterialTheme.typography.labelLarge,
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
+                            } else {
+                                Text(
+                                    stringResource(R.string.server_current, currentServer!!),
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                             Icon(Icons.Default.UnfoldMore, contentDescription = null, modifier = Modifier.size(18.dp))
                         }
                     }

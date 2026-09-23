@@ -494,6 +494,10 @@
     <string name="server_picker_title">Choose server</string>
     <string name="server_current">Server: %s</string>
     <string name="server_auto">Auto — fastest</string>
+    <string name="server_section_all">All servers</string>
+    <string name="server_group_auto">Auto — best in this subscription</string>
+    <string name="server_via_auto">Auto picked it</string>
+    <string name="server_via_group_auto">Auto · %s</string>
     <string name="server_selected_toast">Server: %s</string>
     <string name="aurora_version_line">Aurora %s</string>
     <string name="aurora_release_line">Released %1$s · sing-box core %2$s</string>
