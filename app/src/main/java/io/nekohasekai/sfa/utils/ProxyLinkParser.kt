@@ -35,10 +35,12 @@ object ProxyLinkParser {
         val serverCount: Int = 1,
     )
 
-    /** One server: its display name and a sing-box outbound (without a tag). */
+    /** One server: its display name, a sing-box outbound (without a tag), and its group. */
     data class Server(
         val name: String,
         val outbound: JSONObject,
+        /** Servers of a group get their own Auto and section (e.g. whitelist bypass). */
+        val group: String? = null,
     )
 
     private val schemes =
@@ -115,6 +117,9 @@ object ProxyLinkParser {
     fun parseAll(data: String): List<Server> {
         val text = data.trim()
         if (text.isEmpty()) return emptyList()
+
+        // Liberty-style subscriptions: a JSON array of Xray configs.
+        XrayMultiConfig.parse(text)?.let { if (it.isNotEmpty()) return it }
 
         val direct = text.lines().mapNotNull { parseLine(it) }
         if (direct.isNotEmpty()) return direct
@@ -617,13 +622,39 @@ object ProxyLinkParser {
                 // Relaxed interval: probing dozens of servers costs battery.
                 put("interval", "10m")
                 put("tolerance", 50)
+                put("interrupt_exist_connections", false)
             },
         )
+        // Grouped servers (e.g. whitelist bypass) get their own "⚡ group"
+        // Auto right before them: the server picker shows a section per Auto.
+        val ungrouped = tags.filterIndexed { i, _ -> servers[i].group == null }
+        val selectorMembers = mutableListOf(AUTO_TAG)
+        selectorMembers += ungrouped
+        val used = tags.toMutableSet()
+        servers.mapNotNull { it.group }.distinct().forEach { group ->
+            val members = tags.filterIndexed { i, _ -> servers[i].group == group }
+            var groupTag = ServerSections.GROUP_AUTO_PREFIX + group
+            var n = 2
+            while (!used.add(groupTag)) groupTag = ServerSections.GROUP_AUTO_PREFIX + "$group ($n)".also { n++ }
+            outbounds.put(
+                JSONObject().apply {
+                    put("type", "urltest")
+                    put("tag", groupTag)
+                    put("outbounds", JSONArray(members))
+                    put("url", TEST_URL)
+                    put("interval", "10m")
+                    put("tolerance", 50)
+                    put("interrupt_exist_connections", false)
+                },
+            )
+            selectorMembers += groupTag
+            selectorMembers += members
+        }
         outbounds.put(
             JSONObject().apply {
                 put("type", "selector")
                 put("tag", PROXY_TAG)
-                put("outbounds", JSONArray(listOf(AUTO_TAG) + tags))
+                put("outbounds", JSONArray(selectorMembers))
                 put("default", AUTO_TAG)
                 put("interrupt_exist_connections", false)
             },
@@ -674,6 +705,10 @@ object ProxyLinkParser {
                             put("strict_route", false)
                             put("mtu", 9000)
                             put("stack", "system")
+                            // Russian apps skip the VPN altogether: they go out
+                            // directly and don't see a VPN (Ozon, banks refuse to
+                            // work when they detect one).
+                            put("exclude_package", JSONArray(RuApps.PACKAGES))
                         },
                     ),
                 )

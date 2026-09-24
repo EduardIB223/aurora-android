@@ -27,6 +27,19 @@ object RemoteProfileLoader {
     )
 
     fun fetch(url: String): Result {
+        // Prefer building the profile from the provider's full server list
+        // (Xray configs or share links): it keeps servers a sing-box profile
+        // can't express (XHTTP whitelist bypass), and adds Aurora's RU
+        // routing and sections. Liberty serves 29 servers as sing-box JSON
+        // but ~42 (with the bypass group) this way.
+        if (!isLanUrl(url)) {
+            val full = runCatching { HTTPClient().use { it.getString(url, LINK_LIST_USER_AGENT) } }.getOrNull()
+            full?.let(ProxyLinkParser::parse)?.let { parsed ->
+                if (runCatching { Libbox.checkConfig(parsed.config) }.isSuccess) {
+                    return Result(parsed.config, convertedFromLinks = true, serverCount = parsed.serverCount)
+                }
+            }
+        }
         val native =
             try {
                 HTTPClient().use { it.getString(url) }
