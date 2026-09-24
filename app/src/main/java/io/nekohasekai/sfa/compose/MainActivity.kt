@@ -123,6 +123,7 @@ import io.nekohasekai.sfa.constant.Status
 import io.nekohasekai.sfa.database.Settings
 import io.nekohasekai.sfa.ktx.hasPermission
 import io.nekohasekai.sfa.ktx.launchCustomTab
+import io.nekohasekai.sfa.compose.component.UpdateProgressDialog
 import io.nekohasekai.sfa.update.UpdateState
 import io.nekohasekai.sfa.vendor.Vendor
 import kotlinx.coroutines.Dispatchers
@@ -584,7 +585,7 @@ class MainActivity :
                                     updateInfo!!.downloadUrl,
                                 )
                             }
-                            showDownloadDialog = false
+                            // The dialog stays: installing → the app restarts, or the failure shows.
                         } catch (e: Exception) {
                             downloadError = e.message
                         }
@@ -593,53 +594,27 @@ class MainActivity :
             )
         }
 
-        // Download progress dialog
+        // Download + install progress; stays until the result is known.
         if (showDownloadDialog) {
-            AlertDialog(
-                onDismissRequest = {},
-                title = { Text(stringResource(R.string.update)) },
-                text = {
-                    Column {
-                        if (downloadError != null) {
-                            Text(
-                                downloadError!!,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        } else {
-                            val progress by UpdateState.downloadProgress
-                            Column {
-                                if (progress != null) {
-                                    Text("${stringResource(R.string.downloading)} ${(progress!! * 100).toInt()}%")
-                                } else {
-                                    Text(stringResource(R.string.downloading))
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                if (progress != null) {
-                                    LinearProgressIndicator(
-                                        progress = { progress!! },
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
-                                } else {
-                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                                }
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            downloadJob?.cancel()
-                            downloadJob = null
-                            showDownloadDialog = false
-                            downloadError = null
-                            UpdateState.downloadProgress.value = null
-                        },
-                    ) {
-                        Text(stringResource(if (downloadError != null) R.string.ok else android.R.string.cancel))
-                    }
-                },
-            )
+            UpdateProgressDialog(downloadError = downloadError) {
+                downloadJob?.cancel()
+                downloadJob = null
+                showDownloadDialog = false
+                downloadError = null
+            }
+        }
+
+        // The system's install confirmation, when it couldn't open from the background.
+        val pendingConfirm by UpdateState.pendingConfirmIntent
+        LaunchedEffect(pendingConfirm) {
+            pendingConfirm?.let {
+                UpdateState.pendingConfirmIntent.value = null
+                try {
+                    startActivity(it)
+                } catch (e: Exception) {
+                    UpdateState.setInstallStatus(UpdateState.InstallStatus.Failed(e.message ?: e.toString()))
+                }
+            }
         }
 
         // Initialize the dashboard view model and store reference

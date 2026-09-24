@@ -31,7 +31,15 @@ class InstallResultReceiver : BroadcastReceiver() {
                 }
                 confirmIntent?.let {
                     it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(it)
+                    // Android blocks starting it from the background; the
+                    // foreground activity picks it up from here.
+                    UpdateState.pendingConfirmIntent.value = it
+                    try {
+                        context.startActivity(it)
+                        UpdateState.pendingConfirmIntent.value = null
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Confirmation screen blocked, leaving it to the activity", e)
+                    }
                 }
             }
             PackageInstaller.STATUS_SUCCESS -> {

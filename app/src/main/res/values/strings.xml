@@ -281,6 +281,12 @@
     <string name="update_track_not_supported">Current track does not support update checking yet</string>
     <string name="view_release">View Release</string>
     <string name="downloading">Downloading…</string>
+    <string name="update_installing">Installing… Aurora will restart on the new version.</string>
+    <string name="update_install_hint">If nothing happens, confirm the install in the system window, or allow Aurora to install apps.</string>
+    <string name="update_allow_install">Allow Aurora to install apps, then tap Update again.</string>
+    <string name="update_wrong_file">The downloaded file isn\'t the new version. Try again.</string>
+    <string name="update_install_failed">Update failed: %s</string>
+    <string name="update_open_settings">Open settings</string>
     <string name="exporting">Exporting…</string>
     <string name="no_updates_available">No updates available</string>
     <string name="new_version_available">New version available: %s</string>

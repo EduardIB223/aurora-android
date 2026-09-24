@@ -274,6 +274,12 @@
     <string name="update_track_not_supported">Этот канал пока не поддерживает проверку обновлений</string>
     <string name="view_release">Посмотреть релиз</string>
     <string name="downloading">Загрузка...</string>
+    <string name="update_installing">Устанавливаю… Aurora перезапустится уже новой версии.</string>
+    <string name="update_install_hint">Если ничего не происходит, подтвердите установку в системном окне или разрешите Aurora устанавливать приложения.</string>
+    <string name="update_allow_install">Разрешите Aurora устанавливать приложения и нажмите «Обновить» ещё раз.</string>
+    <string name="update_wrong_file">Скачался не тот файл. Попробуйте ещё раз.</string>
+    <string name="update_install_failed">Не удалось обновить: %s</string>
+    <string name="update_open_settings">Открыть настройки</string>
     <string name="exporting">Экспорт...</string>
     <string name="no_updates_available">Обновлений нет</string>
     <string name="new_version_available">Доступна новая версия: %s</string>

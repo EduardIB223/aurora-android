@@ -94,6 +94,7 @@ import io.nekohasekai.sfa.database.Settings
 import io.nekohasekai.sfa.ktx.clipboardText
 import io.nekohasekai.sfa.update.UpdateCheckException
 import io.nekohasekai.sfa.update.UpdateSource
+import io.nekohasekai.sfa.compose.component.UpdateProgressDialog
 import io.nekohasekai.sfa.update.UpdateState
 import io.nekohasekai.sfa.update.UpdateTrack
 import io.nekohasekai.sfa.utils.HookStatusClient
@@ -261,51 +262,12 @@ fun AppSettingsScreen(navController: NavController) {
     }
 
     if (showDownloadDialog) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text(stringResource(R.string.update)) },
-            text = {
-                Column {
-                    if (downloadError != null) {
-                        Text(
-                            downloadError!!,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    } else {
-                        val progress by UpdateState.downloadProgress
-                        Column {
-                            if (progress != null) {
-                                Text("${stringResource(R.string.downloading)} ${(progress!! * 100).toInt()}%")
-                            } else {
-                                Text(stringResource(R.string.downloading))
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            if (progress != null) {
-                                LinearProgressIndicator(
-                                    progress = { progress!! },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            } else {
-                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        downloadJob?.cancel()
-                        downloadJob = null
-                        showDownloadDialog = false
-                        downloadError = null
-                        UpdateState.downloadProgress.value = null
-                    },
-                ) {
-                    Text(stringResource(if (downloadError != null) R.string.ok else android.R.string.cancel))
-                }
-            },
-        )
+        UpdateProgressDialog(downloadError = downloadError) {
+            downloadJob?.cancel()
+            downloadJob = null
+            showDownloadDialog = false
+            downloadError = null
+        }
     }
 
     if (showInstallMethodMenu) {
@@ -395,7 +357,7 @@ fun AppSettingsScreen(navController: NavController) {
                         withContext(Dispatchers.IO) {
                             Vendor.downloadAndInstall(context, updateInfo!!.downloadUrl)
                         }
-                        showDownloadDialog = false
+                        // The dialog stays: installing → the app restarts, or the failure shows.
                     } catch (e: Exception) {
                         Log.e("AppSettingsScreen", "Error downloading update", e)
                         downloadError = e.message

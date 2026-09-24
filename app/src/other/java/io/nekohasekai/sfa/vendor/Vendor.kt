@@ -134,12 +134,40 @@ object Vendor : VendorInterface {
     }
 
     override suspend fun downloadAndInstall(context: android.content.Context, downloadUrl: String) {
+        UpdateState.setInstallStatus(UpdateState.InstallStatus.Idle)
+        val expected = UpdateState.updateInfo.value?.versionCode
+        // Reuse a downloaded file only if it is the version on offer: an older
+        // one was installed over and over, leaving the app on the same version.
         val cachedApk = UpdateState.cachedApkFile.value
-        val apkFile = if (cachedApk != null && cachedApk.exists() && cachedApk.length() > 0) {
+        val apkFile = if (cachedApk != null && UpdateState.isApkFor(cachedApk, expected)) {
             cachedApk
         } else {
+            UpdateState.dropApk()
             ApkDownloader().use { it.download(downloadUrl) }
         }
-        ApkInstaller.install(context, apkFile)
+        if (expected != null && !UpdateState.isApkFor(apkFile, expected)) {
+            UpdateState.dropApk()
+            throw Exception(context.getString(io.nekohasekai.sfa.R.string.update_wrong_file))
+        }
+        val method = ApkInstaller.getConfiguredMethod()
+        if (method == InstallMethod.PACKAGE_INSTALLER &&
+            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
+            !context.packageManager.canRequestPackageInstalls()
+        ) {
+            context.startActivity(
+                android.content.Intent(
+                    android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    android.net.Uri.parse("package:${context.packageName}"),
+                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+            throw Exception(context.getString(io.nekohasekai.sfa.R.string.update_allow_install))
+        }
+        UpdateState.setInstallStatus(UpdateState.InstallStatus.Installing)
+        try {
+            ApkInstaller.install(context, apkFile, method)
+        } catch (e: Exception) {
+            UpdateState.setInstallStatus(UpdateState.InstallStatus.Failed(e.message ?: e.toString()))
+            throw e
+        }
     }
 }
