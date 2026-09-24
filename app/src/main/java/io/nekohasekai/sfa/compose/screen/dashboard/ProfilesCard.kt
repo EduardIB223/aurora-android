@@ -121,6 +121,7 @@ fun ProfilesCard(
     onOpenNewProfile: (NewProfileArgs) -> Unit,
     vpnRunning: Boolean = false,
     liveRoute: ServerSections.LiveRoute? = null,
+    serverDelays: Map<String, Int> = emptyMap(),
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -517,6 +518,7 @@ fun ProfilesCard(
             profile = selectedProfile,
             vpnRunning = vpnRunning,
             pingOnOpen = pickerPing,
+            liveDelays = serverDelays.takeIf { vpnRunning },
             onSelected = { selectionVersion++ },
             onDismiss = { serverPickerPing = null },
         )

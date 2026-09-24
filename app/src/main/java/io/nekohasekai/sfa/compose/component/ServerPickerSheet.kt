@@ -53,6 +53,7 @@ import io.nekohasekai.sfa.utils.ServerSections
 import io.nekohasekai.sfa.utils.ServerSelection
 import io.nekohasekai.sfa.utils.ServerSelectionStore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -72,6 +73,8 @@ fun ServerPickerSheet(
     profile: Profile,
     vpnRunning: Boolean,
     pingOnOpen: Boolean,
+    /** While connected: delays the running service measured itself (direct). */
+    liveDelays: Map<String, Int>? = null,
     onSelected: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -85,11 +88,29 @@ fun ServerPickerSheet(
     var probes by remember { mutableStateOf<Map<String, Probe>?>(null) }
     var pinging by remember { mutableStateOf(false) }
     var pingError by remember { mutableStateOf<String?>(null) }
+    var liveTested by remember { mutableStateOf(false) }
 
     fun ping() {
         if (pinging) return
         pinging = true
         pingError = null
+        val selector = servers?.selectorTag
+        if (liveDelays != null && selector != null) {
+            // Connected: the running service tests its own outbounds, which
+            // dial past the VPN. A separate instance here would measure
+            // through the tunnel instead.
+            scope.launch {
+                try {
+                    withContext(Dispatchers.IO) { Libbox.newStandaloneCommandClient().urlTest(selector) }
+                    delay(10_000)
+                    liveTested = true
+                } catch (e: Exception) {
+                    pingError = e.message ?: e.toString()
+                }
+                pinging = false
+            }
+            return
+        }
         scope.launch {
             try {
                 probes =
@@ -108,6 +129,19 @@ fun ServerPickerSheet(
             }
             pinging = false
         }
+    }
+
+    // Live results (connected) as they arrive; a 0 counts as failed once the test ran.
+    val shownProbes: Map<String, Probe>? = if (liveDelays != null) {
+        val known = liveDelays.filterValues { it > 0 }
+        if (known.isEmpty() && !liveTested) {
+            null
+        } else {
+            liveDelays.mapValues { (_, d) -> Probe(d, if (d > 0) "" else "no response") }
+                .filterValues { it.delay > 0 || liveTested }
+        }
+    } else {
+        probes
     }
 
     LaunchedEffect(profile.id) {
@@ -162,7 +196,7 @@ fun ServerPickerSheet(
                         }
                     }
 
-                    PingSummary(probes, list.serverCount, pingError, vpnRunning)
+                    PingSummary(shownProbes, list.serverCount, pingError, vpnRunning && liveDelays == null)
 
                     HorizontalDivider()
 
@@ -202,8 +236,8 @@ fun ServerPickerSheet(
                             }
                             section.auto?.let { auto ->
                                 // The first Auto covers every server; a subscription's only its own.
-                                val measured = if (section.title == null) probes?.values
-                                else section.servers.mapNotNull { probes?.get(it.tag) }
+                                val measured = if (section.title == null) shownProbes?.values
+                                else section.servers.mapNotNull { shownProbes?.get(it.tag) }
                                 val best = measured?.filter { it.delay > 0 }?.minOfOrNull { it.delay }
                                 item(span = { GridItemSpan(maxLineSpan) }, key = auto.tag) {
                                     val label = if (section.title == null) stringResource(R.string.server_auto)
@@ -211,12 +245,12 @@ fun ServerPickerSheet(
                                     AutoTile(label, selected = auto.tag == current, delay = best) { choose(auto, label) }
                                 }
                             }
-                            items(sortedServers(section.servers, probes), key = { it.tag }) { entry ->
+                            items(sortedServers(section.servers, shownProbes), key = { it.tag }) { entry ->
                                 ServerTile(
                                     entry = entry,
                                     selected = entry.tag == current,
-                                    probe = probes?.get(entry.tag),
-                                    pinged = probes != null,
+                                    probe = shownProbes?.get(entry.tag),
+                                    pinged = shownProbes != null,
                                 ) { choose(entry, entry.tag) }
                             }
                         }
@@ -230,16 +264,16 @@ fun ServerPickerSheet(
 /** Once pinged: working servers fastest first, then the rest; list order before. */
 private fun sortedServers(
     servers: List<ServerSelection.Entry>,
-    probes: Map<String, Probe>?,
+    shownProbes: Map<String, Probe>?,
 ): List<ServerSelection.Entry> {
-    if (probes == null) return servers
-    val (working, failing) = servers.partition { (probes[it.tag]?.delay ?: 0) > 0 }
-    return working.sortedBy { probes[it.tag]!!.delay } + failing
+    if (shownProbes == null) return servers
+    val (working, failing) = servers.partition { (shownProbes[it.tag]?.delay ?: 0) > 0 }
+    return working.sortedBy { shownProbes[it.tag]!!.delay } + failing
 }
 
 @Composable
 private fun PingSummary(
-    probes: Map<String, Probe>?,
+    shownProbes: Map<String, Probe>?,
     total: Int,
     error: String?,
     vpnRunning: Boolean,
@@ -248,12 +282,12 @@ private fun PingSummary(
         Text(stringResource(R.string.ping_all_failed, error), color = MaterialTheme.colorScheme.error)
         return
     }
-    probes ?: return
-    val working = probes.values.count { it.delay > 0 }
+    shownProbes ?: return
+    val working = shownProbes.values.count { it.delay > 0 }
     Text(stringResource(R.string.ping_all_summary, working, total), fontWeight = FontWeight.SemiBold)
     if (working == 0) {
         // When nothing answers, the reason matters more than the list.
-        probes.values.firstOrNull { it.error.isNotBlank() }?.let {
+        shownProbes.values.firstOrNull { it.error.isNotBlank() }?.let {
             Text(it.error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
     }

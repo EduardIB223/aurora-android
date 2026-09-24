@@ -72,4 +72,18 @@ class ServerSectionsTest {
 
         assertNull(ServerSections.liveRoute(emptyList()))
     }
+
+    @Test
+    fun serverDelaysSkipGroupsAndKeepTheBestKnown() {
+        val groups = listOf(
+            group("auto", "urltest", "A", "A" to 120, "B" to 0),
+            group("⚡ Liberty", "urltest", "A", "A" to 130),
+            group("proxy", "selector", "auto", "auto" to 120, "⚡ Liberty" to 130, "A" to 125, "B" to 0),
+        )
+        val delays = ServerSections.serverDelays(groups)
+        assertEquals(130, delays["A"])
+        assertEquals(0, delays["B"])
+        assertNull("groups are not servers", delays["auto"])
+        assertNull(delays["⚡ Liberty"])
+    }
 }

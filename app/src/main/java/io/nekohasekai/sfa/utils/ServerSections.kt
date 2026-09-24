@@ -68,6 +68,17 @@ object ServerSections {
         return null
     }
 
+    /** Every server's latest delay the running groups know (0 = none / failed). */
+    fun serverDelays(groups: List<GroupState>): Map<String, Int> {
+        val out = HashMap<String, Int>()
+        for (g in groups) {
+            for ((tag, delay) in g.delays) {
+                if (groups.none { it.tag == tag }) out[tag] = maxOf(out[tag] ?: 0, delay)
+            }
+        }
+        return out
+    }
+
     data class GroupState(
         val tag: String,
         val type: String,

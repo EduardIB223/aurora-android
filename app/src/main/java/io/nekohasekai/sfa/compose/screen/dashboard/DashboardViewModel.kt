@@ -58,6 +58,8 @@ data class DashboardUiState(
     val hasGroups: Boolean = false,
     val groupsCount: Int = 0,
     val liveRoute: ServerSections.LiveRoute? = null,
+    /** Latest delay per server from the running service (direct, not through the VPN). */
+    val serverDelays: Map<String, Int> = emptyMap(),
     val connectionsCount: Int = 0,
     val serviceStartTime: Long? = null,
     val deprecatedNotes: List<DeprecatedNote> = emptyList(),
@@ -482,6 +484,7 @@ class DashboardViewModel :
                         hasGroups = false,
                         groupsCount = 0,
                         liveRoute = null,
+                        serverDelays = emptyMap(),
                         connectionsCount = 0,
                         serviceStartTime = null,
                         clashModeVisible = false,
@@ -650,18 +653,18 @@ class DashboardViewModel :
     override fun updateGroups(newGroups: MutableList<OutboundGroup>) {
         viewModelScope.launch(Dispatchers.Main) {
             val hasGroups = newGroups.isNotEmpty()
-            val live = ServerSections.liveRoute(
-                newGroups.map { g ->
-                    ServerSections.GroupState(
-                        tag = g.tag,
-                        type = g.type,
-                        selected = g.selected,
-                        delays = g.items.toList().associate { it.tag to it.urlTestDelay },
-                    )
-                },
-            )
+            val states = newGroups.map { g ->
+                ServerSections.GroupState(
+                    tag = g.tag,
+                    type = g.type,
+                    selected = g.selected,
+                    delays = g.items.toList().associate { it.tag to it.urlTestDelay },
+                )
+            }
+            val live = ServerSections.liveRoute(states)
+            val delays = ServerSections.serverDelays(states)
             updateState {
-                copy(hasGroups = hasGroups, groupsCount = newGroups.size, liveRoute = live)
+                copy(hasGroups = hasGroups, groupsCount = newGroups.size, liveRoute = live, serverDelays = delays)
             }
         }
     }
