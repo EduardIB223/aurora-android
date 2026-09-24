@@ -46,6 +46,7 @@ fun DashboardScreen(
     showStartFab: Boolean = false,
     showStatusBar: Boolean = false,
     onOpenNewProfile: (NewProfileArgs) -> Unit = {},
+    onOpenApps: () -> Unit = {},
     onStartService: () -> Unit = {},
     viewModel: DashboardViewModel = viewModel(),
 ) {
@@ -210,6 +211,7 @@ fun DashboardScreen(
                                 onShowProfilePickerSheet = viewModel::showProfilePickerSheet,
                                 onHideProfilePickerSheet = viewModel::hideProfilePickerSheet,
                                 onOpenNewProfile = onOpenNewProfile,
+                                onOpenApps = onOpenApps,
                                 commandClient = viewModel.commandClient,
                                 modifier =
                                 Modifier
@@ -250,6 +252,7 @@ fun DashboardScreen(
                             onShowProfilePickerSheet = viewModel::showProfilePickerSheet,
                             onHideProfilePickerSheet = viewModel::hideProfilePickerSheet,
                             onOpenNewProfile = onOpenNewProfile,
+                                onOpenApps = onOpenApps,
                             commandClient = viewModel.commandClient,
                         )
                     }

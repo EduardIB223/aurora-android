@@ -35,6 +35,7 @@ fun DashboardCardRenderer(
     onShowProfilePickerSheet: () -> Unit = {},
     onHideProfilePickerSheet: () -> Unit = {},
     onOpenNewProfile: (NewProfileArgs) -> Unit = {},
+    onOpenApps: () -> Unit = {},
     commandClient: CommandClient? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -124,6 +125,7 @@ fun DashboardCardRenderer(
                 onShowProfilePickerSheet = onShowProfilePickerSheet,
                 onHideProfilePickerSheet = onHideProfilePickerSheet,
                 onOpenNewProfile = onOpenNewProfile,
+                onOpenApps = onOpenApps,
                 vpnRunning = serviceStatus == Status.Started,
                 liveRoute = uiState.liveRoute,
                 serverDelays = uiState.serverDelays,

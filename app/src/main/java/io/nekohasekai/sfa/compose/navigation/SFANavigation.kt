@@ -79,6 +79,7 @@ fun SFANavHost(
                     showStartFab = showStartFab,
                     showStatusBar = showStatusBar,
                     onOpenNewProfile = onOpenNewProfile,
+                    onOpenApps = { navController.navigate("settings/profile_override") },
                     onStartService = onStartService,
                     viewModel = dashboardViewModel,
                 )
@@ -88,6 +89,7 @@ fun SFANavHost(
                     showStartFab = showStartFab,
                     showStatusBar = showStatusBar,
                     onOpenNewProfile = onOpenNewProfile,
+                    onOpenApps = { navController.navigate("settings/profile_override") },
                     onStartService = onStartService,
                 )
             }

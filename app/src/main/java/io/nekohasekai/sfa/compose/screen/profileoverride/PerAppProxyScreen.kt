@@ -396,7 +396,18 @@ fun PerAppProxyScreen(onBack: () -> Unit) {
                             Toast.LENGTH_SHORT,
                         ).show()
                     },
-                    onScanChinaApps = { startScan() },
+                    onScanChinaApps = {
+                        // Aurora: Russian apps go around the VPN — added to an
+                        // "all except" list, taken out of an "only these" one.
+                        val ruUids = packages.filter { it.packageName in io.nekohasekai.sfa.utils.RuApps.PACKAGES }.map { it.uid }.toSet()
+                        val next = if (proxyMode == Settings.PER_APP_PROXY_INCLUDE) selectedUids - ruUids else selectedUids + ruUids
+                        postSaveSelectedApplications(next)
+                        android.widget.Toast.makeText(
+                            context,
+                            context.getString(R.string.per_app_proxy_ru_apps_done, ruUids.size),
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    },
                 )
             },
             colors =
@@ -1197,7 +1208,7 @@ private fun PerAppProxyMenus(
             )
             if (showScanMenu) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.per_app_proxy_scan_china_apps)) },
+                    text = { Text(stringResource(R.string.per_app_proxy_ru_apps)) },
                     onClick = {
                         onScanChinaApps()
                         showMainMenu = false

@@ -274,6 +274,9 @@
     <string name="update_track_not_supported">Этот канал пока не поддерживает проверку обновлений</string>
     <string name="view_release">Посмотреть релиз</string>
     <string name="downloading">Загрузка...</string>
+    <string name="per_app_proxy_ru_apps">Российские приложения мимо VPN</string>
+    <string name="per_app_proxy_ru_apps_done">Найдено российских приложений: %d</string>
+    <string name="apps_bypass_button">Приложения: какие мимо VPN</string>
     <string name="update_installing">Устанавливаю… Aurora перезапустится уже новой версии.</string>
     <string name="update_install_hint">Если ничего не происходит, подтвердите установку в системном окне или разрешите Aurora устанавливать приложения.</string>
     <string name="update_allow_install">Разрешите Aurora устанавливать приложения и нажмите «Обновить» ещё раз.</string>

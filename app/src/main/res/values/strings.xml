@@ -281,6 +281,9 @@
     <string name="update_track_not_supported">Current track does not support update checking yet</string>
     <string name="view_release">View Release</string>
     <string name="downloading">Downloading…</string>
+    <string name="per_app_proxy_ru_apps">Russian apps skip the VPN</string>
+    <string name="per_app_proxy_ru_apps_done">Russian apps found: %d</string>
+    <string name="apps_bypass_button">Apps: which skip the VPN</string>
     <string name="update_installing">Installing… Aurora will restart on the new version.</string>
     <string name="update_install_hint">If nothing happens, confirm the install in the system window, or allow Aurora to install apps.</string>
     <string name="update_allow_install">Allow Aurora to install apps, then tap Update again.</string>

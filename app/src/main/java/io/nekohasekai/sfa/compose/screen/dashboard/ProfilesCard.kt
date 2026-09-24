@@ -119,6 +119,7 @@ fun ProfilesCard(
     onShowProfilePickerSheet: () -> Unit,
     onHideProfilePickerSheet: () -> Unit,
     onOpenNewProfile: (NewProfileArgs) -> Unit,
+    onOpenApps: () -> Unit = {},
     vpnRunning: Boolean = false,
     liveRoute: ServerSections.LiveRoute? = null,
     serverDelays: Map<String, Int> = emptyMap(),
@@ -506,6 +507,13 @@ fun ProfilesCard(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(stringResource(R.string.ping_all))
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = onOpenApps,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.apps_bypass_button))
                     }
                 }
             }

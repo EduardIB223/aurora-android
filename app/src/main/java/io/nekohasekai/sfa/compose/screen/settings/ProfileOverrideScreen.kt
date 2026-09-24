@@ -363,6 +363,13 @@ fun ProfileOverrideScreen(navController: NavController) {
                                 } else {
                                     perAppProxyEnabled = checked
                                     scope.launch(Dispatchers.IO) {
+                                        // A fresh list starts with the Russian apps: turning
+                                        // this on replaces the profile's own exclusions.
+                                        if (checked && Settings.perAppProxyList.isEmpty() &&
+                                            Settings.perAppProxyMode == Settings.PER_APP_PROXY_EXCLUDE
+                                        ) {
+                                            Settings.perAppProxyList = io.nekohasekai.sfa.utils.RuApps.installed(context)
+                                        }
                                         Settings.perAppProxyEnabled = checked
                                     }
                                     if (checked && managedModeEnabled) {

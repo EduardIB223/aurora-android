@@ -23,4 +23,9 @@ object RuApps {
         // Carriers
         "ru.mts.mymts", "ru.megafon.mlk", "ru.beeline.services", "ru.tele2.mytele2",
     )
+
+    /** The ones installed on this phone. */
+    fun installed(context: android.content.Context): Set<String> = PACKAGES.filter {
+        runCatching { context.packageManager.getPackageInfo(it, 0) }.isSuccess
+    }.toSet()
 }
