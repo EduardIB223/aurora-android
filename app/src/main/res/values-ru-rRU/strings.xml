@@ -277,6 +277,10 @@
     <string name="per_app_proxy_ru_apps">Российские приложения мимо VPN</string>
     <string name="per_app_proxy_ru_apps_done">Найдено российских приложений: %d</string>
     <string name="apps_bypass_button">Приложения: какие мимо VPN</string>
+    <string name="auto_pause_title">Выключать VPN в VK, Ozon и банках</string>
+    <string name="auto_pause_description">Эти приложения видят VPN, даже когда идут мимо него. Пока такое приложение открыто, VPN на паузе, а когда вы из него выходите, включается сам.</string>
+    <string name="auto_pause_permission">Нужен «Доступ к истории использования»: нажмите и разрешите Aurora</string>
+    <string name="auto_pause_notification">Пауза: открыт %s. VPN включится, когда вы из него выйдете</string>
     <string name="update_installing">Устанавливаю… Aurora перезапустится уже новой версии.</string>
     <string name="update_install_hint">Если ничего не происходит, подтвердите установку в системном окне или разрешите Aurora устанавливать приложения.</string>
     <string name="update_allow_install">Разрешите Aurora устанавливать приложения и нажмите «Обновить» ещё раз.</string>

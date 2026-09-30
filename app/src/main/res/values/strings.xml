@@ -284,6 +284,10 @@
     <string name="per_app_proxy_ru_apps">Russian apps skip the VPN</string>
     <string name="per_app_proxy_ru_apps_done">Russian apps found: %d</string>
     <string name="apps_bypass_button">Apps: which skip the VPN</string>
+    <string name="auto_pause_title">Turn the VPN off in VK, Ozon and banks</string>
+    <string name="auto_pause_description">These apps see a VPN even when they bypass it. While one of them is open the VPN pauses, and it comes back by itself when you leave the app.</string>
+    <string name="auto_pause_permission">Needs Usage access: tap and allow Aurora</string>
+    <string name="auto_pause_notification">Paused while %s is open. The VPN comes back when you leave it</string>
     <string name="update_installing">Installing… Aurora will restart on the new version.</string>
     <string name="update_install_hint">If nothing happens, confirm the install in the system window, or allow Aurora to install apps.</string>
     <string name="update_allow_install">Allow Aurora to install apps, then tap Update again.</string>

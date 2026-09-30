@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AppShortcut
 import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material.icons.outlined.PauseCircle
 import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material.icons.outlined.Tune
@@ -182,6 +183,88 @@ fun ProfileOverrideScreen(navController: NavController) {
             .verticalScroll(rememberScrollState())
             .padding(vertical = 8.dp),
     ) {
+        // Aurora: pause the VPN while VK, Ozon or a bank is on screen
+        var autoPauseEnabled by remember { mutableStateOf(Settings.autoPauseEnabled) }
+        var usageAccess by remember { mutableStateOf(io.nekohasekai.sfa.bg.AutoPause.hasPermission(context)) }
+        DisposableEffect(lifecycleOwner) {
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    usageAccess = io.nekohasekai.sfa.bg.AutoPause.hasPermission(context)
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        }
+        fun openUsageAccess() {
+            val intent = Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            // Some phones open Aurora's own page for the package, others only the list.
+            runCatching { context.startActivity(Intent(intent).setData(Uri.parse("package:" + context.packageName))) }
+                .recoverCatching { context.startActivity(intent) }
+        }
+        Card(
+            modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            ),
+        ) {
+            ListItem(
+                headlineContent = {
+                    Text(
+                        stringResource(R.string.auto_pause_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                },
+                supportingContent = {
+                    Column {
+                        Text(
+                            stringResource(R.string.auto_pause_description),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        if (autoPauseEnabled && !usageAccess) {
+                            Text(
+                                stringResource(R.string.auto_pause_permission),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                    }
+                },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Outlined.PauseCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                },
+                trailingContent = {
+                    Switch(
+                        checked = autoPauseEnabled,
+                        onCheckedChange = { checked ->
+                            autoPauseEnabled = checked
+                            scope.launch(Dispatchers.IO) {
+                                Settings.autoPauseEnabled = checked
+                            }
+                            if (checked && !usageAccess) openUsageAccess()
+                        },
+                    )
+                },
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(enabled = autoPauseEnabled && !usageAccess) { openUsageAccess() },
+                colors =
+                ListItemDefaults.colors(
+                    containerColor = Color.Transparent,
+                ),
+            )
+        }
+
         // Card 1: Auto Redirect
         Card(
             modifier =

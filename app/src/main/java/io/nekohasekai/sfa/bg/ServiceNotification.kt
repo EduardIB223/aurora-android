@@ -49,6 +49,10 @@ class ServiceNotification(private val status: MutableLiveData<Status>, private v
         CommandClient(GlobalScope, CommandClient.ConnectionType.Status, this)
     private var receiverRegistered = false
 
+    // Aurora: set while the VPN is paused for an app on screen.
+    @Volatile
+    private var pausedText: String? = null
+
     private val notificationBuilder by lazy {
         NotificationCompat.Builder(service, notificationChannel).setShowWhen(false).setOngoing(true)
             .setContentTitle("sing-box").setOnlyAlertOnce(true)
@@ -99,6 +103,21 @@ class ServiceNotification(private val status: MutableLiveData<Status>, private v
         )
     }
 
+    fun showPaused(lastProfileName: String, appLabel: String) {
+        val text = service.getString(R.string.auto_pause_notification, appLabel)
+        pausedText = text
+        Application.notificationManager.notify(
+            notificationId,
+            notificationBuilder
+                .setContentTitle(lastProfileName.takeIf { it.isNotBlank() } ?: "sing-box")
+                .setContentText(text).build(),
+        )
+    }
+
+    fun clearPaused() {
+        pausedText = null
+    }
+
     suspend fun start() {
         if (Settings.dynamicNotification && checkPermission()) {
             commandClient.connect()
@@ -109,6 +128,8 @@ class ServiceNotification(private val status: MutableLiveData<Status>, private v
     }
 
     private fun registerReceiver() {
+        // start() runs again when the VPN comes back from a pause.
+        if (receiverRegistered) return
         service.registerReceiver(
             this,
             IntentFilter().apply {
@@ -120,8 +141,8 @@ class ServiceNotification(private val status: MutableLiveData<Status>, private v
     }
 
     override fun updateStatus(status: StatusMessage) {
-        val content =
-            Libbox.formatBytes(status.uplink) + "/s ↑\t" + Libbox.formatBytes(status.downlink) + "/s ↓"
+        val content = pausedText
+            ?: (Libbox.formatBytes(status.uplink) + "/s ↑\t" + Libbox.formatBytes(status.downlink) + "/s ↓")
         Application.notificationManager.notify(
             notificationId,
             notificationBuilder.setContentText(content).build(),
@@ -141,6 +162,7 @@ class ServiceNotification(private val status: MutableLiveData<Status>, private v
     }
 
     fun close() {
+        pausedText = null
         commandClient.disconnect()
         ServiceCompat.stopForeground(service, ServiceCompat.STOP_FOREGROUND_REMOVE)
         if (receiverRegistered) {

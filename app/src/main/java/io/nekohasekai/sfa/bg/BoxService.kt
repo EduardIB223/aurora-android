@@ -75,6 +75,10 @@ class BoxService(private val service: Service, private val platformInterface: Pl
     private val notification = ServiceNotification(status, service)
     private lateinit var commandServer: CommandServer
 
+    // Aurora: closes the tunnel while VK, Ozon or a bank is on screen.
+    @OptIn(DelicateCoroutinesApi::class)
+    private val autoPause = AutoPause(service, GlobalScope, onPause = ::pauseTunnel, onResume = ::resumeTunnel)
+
     private var receiverRegistered = false
     private val receiver =
         object : BroadcastReceiver() {
@@ -172,10 +176,35 @@ class BoxService(private val service: Service, private val platformInterface: Pl
                 notification.show(lastProfileName, R.string.status_started)
             }
             notification.start()
+            if (service is VPNService) autoPause.start()
         } catch (e: Exception) {
             stopAndAlert(Alert.StartService, e.message)
             return
         }
+    }
+
+    private suspend fun pauseTunnel(packageName: String) {
+        if (status.value != Status.Started) return
+        val pfd = fileDescriptor
+        if (pfd != null) {
+            pfd.close()
+            fileDescriptor = null
+        }
+        closeService()
+        val label =
+            runCatching {
+                val pm = service.packageManager
+                pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+            }.getOrDefault(packageName)
+        withContext(Dispatchers.Main) {
+            notification.showPaused(lastProfileName, label)
+        }
+    }
+
+    private suspend fun resumeTunnel() {
+        if (status.value != Status.Started) return
+        notification.clearPaused()
+        startService()
     }
 
     override fun serviceStop() {
@@ -196,6 +225,8 @@ class BoxService(private val service: Service, private val platformInterface: Pl
     }
 
     suspend fun serviceReload0() {
+        // Paused for an app on screen: the new profile loads when the VPN comes back.
+        if (autoPause.paused) return
         val selectedProfileId = Settings.selectedProfile
         if (selectedProfileId == -1L) {
             stopAndAlert(Alert.EmptyConfiguration)
@@ -280,13 +311,16 @@ class BoxService(private val service: Service, private val platformInterface: Pl
         }
         notification.close()
         GlobalScope.launch(Dispatchers.IO) {
+            // A pause already closed the box; closing it again only records an error.
+            val wasPaused = autoPause.paused
+            autoPause.stop()
             val pfd = fileDescriptor
             if (pfd != null) {
                 pfd.close()
                 fileDescriptor = null
             }
             DefaultNetworkMonitor.stop()
-            closeService()
+            if (!wasPaused) closeService()
             commandServer.apply {
                 close()
 //                Seq.destroyRef(refnum)
@@ -309,6 +343,7 @@ class BoxService(private val service: Service, private val platformInterface: Pl
 
     private suspend fun stopAndAlert(type: Alert, message: String? = null) {
         Settings.startedByUser = false
+        autoPause.cancel()
         val pfd = fileDescriptor
         if (pfd != null) {
             pfd.close()

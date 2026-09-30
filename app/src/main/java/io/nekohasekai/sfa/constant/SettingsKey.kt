@@ -17,6 +17,7 @@ object SettingsKey {
 
     const val AUTO_REDIRECT = "auto_redirect"
     const val PER_APP_PROXY_ENABLED = "per_app_proxy_enabled"
+    const val AUTO_PAUSE_ENABLED = "aurora_auto_pause_enabled"
     const val PER_APP_PROXY_MODE = "per_app_proxy_mode"
     const val PER_APP_PROXY_LIST = "per_app_proxy_list"
     const val PER_APP_PROXY_MANAGED_MODE = "per_app_proxy_managed_mode"

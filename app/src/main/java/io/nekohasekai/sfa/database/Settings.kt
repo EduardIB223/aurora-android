@@ -75,6 +75,9 @@ object Settings {
 
     var autoRedirect by dataStore.boolean(SettingsKey.AUTO_REDIRECT) { false }
     var perAppProxyEnabled by dataStore.boolean(SettingsKey.PER_APP_PROXY_ENABLED) { false }
+
+    /** Aurora: pause the VPN while VK, Ozon or a bank is on screen. */
+    var autoPauseEnabled by dataStore.boolean(SettingsKey.AUTO_PAUSE_ENABLED) { false }
     var perAppProxyMode by dataStore.int(SettingsKey.PER_APP_PROXY_MODE) { PER_APP_PROXY_EXCLUDE }
     var perAppProxyList by dataStore.stringSet(SettingsKey.PER_APP_PROXY_LIST) { emptySet() }
     var perAppProxyManagedMode by dataStore.boolean(SettingsKey.PER_APP_PROXY_MANAGED_MODE) { false }
